@@ -10,13 +10,20 @@ import (
 )
 
 func main() {
+
+	unitListConfig, err := initializeConfigs("config/config.json")
+	if err != nil {
+		println(err.Error())
+		os.Exit(1)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	newSupervisor := supervisor.New(ctx)
+	if err := newSupervisor.SetUnitsByConfig(unitListConfig); err != nil {
+		println(err.Error())
+		os.Exit(1)
+	}
 
-	newSupervisor.NewUnit("vim", []string{})
-	// newSupervisor.NewUnit("vim", []string{})
-	// newSupervisor.NewUnit("vim", []string{})
-	// newSupervisor.NewUnit("vim", []string{})
+	// newSupervisor.NewUnit("sleep 4000", []string{})
 
 	time.Sleep(time.Second * 2)
 

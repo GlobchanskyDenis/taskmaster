@@ -1,15 +1,15 @@
-BACK_BIN		=	back
-BACK_DIR		=	cmd/back
-BACK_FILES		=	main.go
-BACK_FILENAMES	=	$(addprefix $(BACK_DIR)/,$(BACK_FILES))
+SOCKET_BIN		=	socket
+SOCKET_DIR		=	cmd/socket
+SOCKET_FILES		=	main.go		config.go
+SOCKET_FILENAMES	=	$(addprefix $(SOCKET_DIR)/,$(SOCKET_FILES))
 
-all : $(BACK_BIN)
+all : $(SOCKET_BIN)
 
-$(BACK_BIN) : $(BACK_FILENAMES)
+$(SOCKET_BIN) : $(SOCKET_FILENAMES)
 	@echo "компилирую все в бинарник"
-	go build -o $(BACK_BIN) $(BACK_FILENAMES) 
+	go build -o $(SOCKET_BIN) $(SOCKET_FILENAMES) 
 
 fclean:
-	rm -rf $(BACK_BIN)
+	rm -rf $(SOCKET_BIN)
 
 re: fclean all

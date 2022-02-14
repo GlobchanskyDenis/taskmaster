@@ -4,6 +4,7 @@ import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	// "context"
+	"sync"
 	"fmt"
 )
 
@@ -39,6 +40,23 @@ func (u *unitMeta) getStatus() {
 	u.statusCode = result.StatusCode
 	u.status = result.Status
 	u.lastError = result.Error
+}
+
+func (u *unitMeta) getStatusAsync(wg *sync.WaitGroup) {
+	fmt.Println("Отсылаю команду демону")
+	u.sender <- dto.Command{
+		Type: constants.COMMAND_STATUS,
+	}
+	fmt.Println("Отослал команду демону")
+	result := <- u.receiver
+	fmt.Println("Получил ответ от демона")
+
+	u.pid = result.Pid
+	u.name = result.Name
+	u.statusCode = result.StatusCode
+	u.status = result.Status
+	u.lastError = result.Error
+	wg.Done()
 }
 
 func (u *unitMeta) printShortStatus() {

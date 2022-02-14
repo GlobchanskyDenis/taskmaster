@@ -4,7 +4,8 @@ import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/utils/osProcess"
-	"github.com/GlobchanskyDenis/taskmaster.git/pkg/processName"
+	// "github.com/GlobchanskyDenis/taskmaster.git/pkg/processName"
+	"syscall"
 	"context"
 	"errors"
 	"sync"
@@ -13,20 +14,20 @@ import (
 )
 
 type daemon struct {
-	processMeta
+	dto.ProcessMeta
 	processAsync
 	ctx                  context.Context
 	receiver             <-chan dto.Command
 	sender               chan<- dto.CommandResult
 }
 
-type processMeta struct {
-	name       string
-	path       string
-	args       []string
-	env        []string
-	rawName    string
-}
+// type processMeta struct {
+// 	name       string
+// 	path       string
+// 	args       []string
+// 	env        []string
+// 	rawName    string
+// }
 
 type processAsync struct {
 	pid        int
@@ -39,15 +40,15 @@ type processAsync struct {
 	mu         *sync.Mutex
 }
 
-func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, rawName string, env []string) *daemon {
+func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta) *daemon { // rawName string, env []string
 	return &daemon{
 		ctx: ctx,
 		receiver: receiver,
 		sender: sender,
-		processMeta: processMeta{
+		ProcessMeta: meta, /*processMeta{
 			rawName: rawName,
 			env: env,
-		},
+		},*/
 		processAsync: processAsync{
 			statusCode: constants.STATUS_DEAD,
 			wasStopped: true,
@@ -57,11 +58,11 @@ func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.Com
 	}
 }
 
-func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, rawName string, env []string) {
-	d := new(ctx, receiver, sender, rawName, env)
-	if err := d.parseProcessName(); err != nil {
-		d.handleError(err)
-	}
+func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta) { // rawName string, env []string
+	d := new(ctx, receiver, sender, meta) // rawName, env
+	// if err := d.parseProcessName(); err != nil {
+	// 	d.handleError(err)
+	// }
 	if err := d.startProcess(); err != nil {
 		d.handleError(err)
 	}
@@ -70,49 +71,60 @@ func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dt
 	d.listen()
 }
 
-func (d *daemon) parseProcessName() error {
-	name, path, args, err := processName.Parse(d.rawName)
-	if err != nil {
-		return err
-	}
-	d.name = name
-	d.path = path
-	d.args = args
-	return nil
-}
+// func (d *daemon) parseProcessName() error {
+// 	name, path, args, err := processName.Parse(d.rawName)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	d.name = name
+// 	d.path = path
+// 	d.args = args
+// 	return nil
+// }
 
 func (d *daemon) startProcess() error {
-	if d.name != "" {
-		process, err := osProcess.New(d.name, d.path, d.args, d.env)
+	if d.Name != "" {
+		process, err := osProcess.New(d.Name, d.BinPath, d.Args, d.Env, syscall.SIGINT) // SIGINT - сигнал который получит процесс в случае остановки родительского процесса
 		if err != nil {
 			return err
 		}
+		d.mu.Lock()
 		d.process = process
+		d.pid = process.Pid
+		d.statusCode = constants.STATUS_ACTIVE
+		d.mu.Unlock()
 	} else if d.pid != 0 {
 		process, err := osProcess.GetByPid(d.pid)
 		if err != nil {
 			return err
 		}
+		d.mu.Lock()
 		d.process = process
+		d.pid = process.Pid
+		d.statusCode = constants.STATUS_ACTIVE
+		d.mu.Unlock()
 	}
 	return nil
 }
 
 func (d *daemon) listen() {
-	fmt.Printf("\tДемон %d %s стартовал\n", d.pid, d.name)
+	fmt.Printf("\tДемон %d %s стартовал\n", d.pid, d.Name)
 	go d.handleProcessStop()
-	select {
-	case command := <- d.receiver:
-		fmt.Printf("\tДемон %d %s получил команду %#v\n", d.pid, d.name, command)
-		d.commandFactory(command)
-		fmt.Printf("\tДемон %d %s отослал команду\n", d.pid, d.name)
-	case <- d.ctx.Done():
-		fmt.Printf("\tДемон %d %s получил сигнал завершения программы\n", d.pid, d.name)
-		if err := d.killProcess(); err != nil {
-			d.handleError(err)
+	defer fmt.Printf("\tДемон %d %s завершил работу функции listen\n", d.pid, d.Name)
+	for {
+		select {
+		case command := <- d.receiver:
+			fmt.Printf("\tДемон %d %s получил команду %#v\n", d.pid, d.Name, command)
+			d.commandFactory(command)
+			fmt.Printf("\tДемон %d %s отослал команду\n", d.pid, d.Name)
+		case <- d.ctx.Done():
+			fmt.Printf("\tДемон %d %s получил сигнал завершения программы\n", d.pid, d.Name)
+			if err := d.killProcess(); err != nil {
+				d.handleError(err)
+			}
+			fmt.Printf("\tДемон %d %s завершил работу\n", d.pid, d.Name)
+			return
 		}
-		fmt.Printf("\tДемон %d %s завершил работу\n", d.pid, d.name)
-		return
 	}
 }
 
@@ -143,6 +155,7 @@ func (d *daemon) sendStatusResult(command dto.Command) {
 	defer d.mu.Unlock()
 	d.sender <- dto.CommandResult{
 		Pid: d.pid,
+		Name: d.Name,
 		Status: d.status,
 		StatusCode: d.statusCode,
 		Error: d.lastError,
@@ -150,7 +163,7 @@ func (d *daemon) sendStatusResult(command dto.Command) {
 }
 
 func (d *daemon) killProcess() error {
-	if d.process != nil {
+	if d.process != nil && d.wasStopped == false {
 		if err := d.process.Kill(); err != nil {
 			return err
 		}
@@ -160,12 +173,12 @@ func (d *daemon) killProcess() error {
 }
 
 func (d *daemon) handleError(err error) {
-	fmt.Printf("\tДемон %d %s получил ошибку %s\n", d.pid, d.name, err)
-	d.sender <- dto.CommandResult{
-		Error: err,
-		StatusCode: constants.STATUS_ERROR,
-		Status: "Произошла ошибка",
-	}
+	fmt.Printf("\tДемон %d %s получил ошибку %s\n", d.pid, d.Name, err)
+	d.mu.Lock()
+	d.statusCode = constants.STATUS_ERROR
+	d.lastError = err
+	d.status = "Произошла ошибка"
+	d.mu.Unlock()
 }
 
 func (d *daemon) handleProcessStop() {

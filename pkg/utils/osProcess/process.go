@@ -1,13 +1,18 @@
 package osProcess
 
-import "os"
+import (
+	"syscall"
+	"os"
+)
 
-func New(processName, processDir string, args, env []string) (*os.Process, error) {
+func New(processName, processDir string, args, env []string, parentStopSignal syscall.Signal) (*os.Process, error) {
 	return os.StartProcess(processName, args, &os.ProcAttr{
 		Dir: processDir,
 		Env: env,
 		Files: nil,
-		Sys: nil,
+		Sys: &syscall.SysProcAttr{
+			Pdeathsig: parentStopSignal,
+		},
 	})
 }
 

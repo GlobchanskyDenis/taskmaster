@@ -1,0 +1,38 @@
+{
+	"Units": [
+		{
+			"Cmd": "vim",
+			"Args": [],
+			"Env": [],
+			"Replicas": 1,
+			"Autostart": true,
+			"Autorestart": "Always",
+			"Starttime": 5,
+			"Stoptime": 2,
+			"Restartretries": 0,
+			"Signal": "SIGQUIT",
+			"Exitcodes": [],
+			"Umask": "022",
+			"Stdout": null,
+            "Stderr": null,
+			"Workingdir": "./test/"
+		},
+		{
+			"Cmd": "sleep 4000",
+			"Args": [],
+			"Env": [],
+			"Replicas": 1,
+			"Autostart": true,
+			"Autorestart": "Always",
+			"Starttime": 5,
+			"Stoptime": 2,
+			"Restartretries": 0,
+			"Signal": "SIGQUIT",
+			"Exitcodes": [],
+			"Umask": "022",
+			"Stdout": null,
+            "Stderr": null,
+			"Workingdir": "./test/"
+		}
+	]
+}
