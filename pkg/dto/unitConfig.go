@@ -1,33 +1,12 @@
-package supervisor
+package dto
 
 import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/processName"
-	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
+	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"syscall"
 	"strconv"
 	"errors"
 )
-
-const (
-	AUTORESTART_ALWAYS = "Always"
-	AUTORESTART_NEVER = "Never"
-	AUTORESTART_LIMITED_TIMES = "Limited"
-	SIGNAL_SIGTERM = "SIGTERM"
-	SIGNAL_SIGINT = "SIGINT"
-	SIGNAL_SIGQUIT = "SIGQUIT"
-)
-
-type UnitListConfig []*UnitConfig
-
-func (u UnitListConfig) GetMaxStopTime() uint {
-	var maxStopTime uint
-	for _, conf := range u {
-		if conf.Stoptime > maxStopTime {
-			maxStopTime = conf.Stoptime
-		}
-	}
-	return maxStopTime
-}
 
 type UnitConfig struct {
 	Cmd				string   `conf:"Cmd"`            // Команда, которую мы запускаем. Отсюда же мы берем и имя процесса
@@ -46,35 +25,35 @@ type UnitConfig struct {
 	Stderr          *string	 `conf:"Stderr"`         // Файл для перенаправления вместо стандартного потока ошибок. null если не нужно. Это поле нужно парсить
 	Workingdir      *string	 `conf:"Workingdir"`     // установка каталога для процесса (относится к chroot)
 
-	processName     string         `conf:"-"`
-	processArgs     []string       `conf:"-"`
-	binPath         string         `conf:"-"`
+	ProcessName     string         `conf:"-"`
+	ProcessArgs     []string       `conf:"-"`
+	BinPath         string         `conf:"-"`
 	signal          syscall.Signal `conf:"-"`
 	autorestart     bool           `conf:"-"`
-	restartTimes    *uint          `conf:"-"`
+	RestartTimes    *uint          `conf:"-"`
 }
 
-func (u UnitConfig) validate() error {
-	if u.AutoRestart != AUTORESTART_ALWAYS && u.AutoRestart != AUTORESTART_NEVER && u.AutoRestart != AUTORESTART_LIMITED_TIMES {
+func (u UnitConfig) Validate() error {
+	if u.AutoRestart != constants.AUTORESTART_ALWAYS && u.AutoRestart != constants.AUTORESTART_NEVER && u.AutoRestart != constants.AUTORESTART_LIMITED_TIMES {
 		return errors.New("В конфигурации в пункте AutoRestart присвоено недопустимое значение (" + u.AutoRestart + "). Допустимые значения: " + 
-			AUTORESTART_ALWAYS + ", " + AUTORESTART_NEVER + ", " + AUTORESTART_LIMITED_TIMES)
+		constants.AUTORESTART_ALWAYS + ", " + constants.AUTORESTART_NEVER + ", " + constants.AUTORESTART_LIMITED_TIMES)
 	}
-	if u.Signal != SIGNAL_SIGTERM && u.Signal != SIGNAL_SIGINT && u.Signal != SIGNAL_SIGQUIT {
+	if u.Signal != constants.SIGNAL_SIGTERM && u.Signal != constants.SIGNAL_SIGINT && u.Signal != constants.SIGNAL_SIGQUIT {
 		return errors.New("В конфигурации в пункте Signal присвоено недопустимое значение (" + u.Signal + "). Допустимые значения: " + 
-			SIGNAL_SIGTERM  + ", " + SIGNAL_SIGINT + ", " + SIGNAL_SIGQUIT)
+		constants.SIGNAL_SIGTERM  + ", " + constants.SIGNAL_SIGINT + ", " + constants.SIGNAL_SIGQUIT)
 	}
-	if u.AutoRestart == AUTORESTART_LIMITED_TIMES && u.Restartretries == 0 {
+	if u.AutoRestart == constants.AUTORESTART_LIMITED_TIMES && u.Restartretries == 0 {
 		return errors.New("В конфигурации в пунктах AutoRestart, Restartretries присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Restartretries=0).")
 	}
-	if u.AutoRestart == AUTORESTART_NEVER && u.Restartretries != 0 {
+	if u.AutoRestart == constants.AUTORESTART_NEVER && u.Restartretries != 0 {
 		return errors.New("В конфигурации в пунктах AutoRestart, Restartretries присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Restartretries=" +
 			strconv.FormatUint(uint64(u.Restartretries), 10) + "). Restartretries должен быть нулем если вы не хотите авторестарта")
 	}
 	if u.Replicas == 0 {
 		return errors.New("В конфигурации в пункте Replicas присвоено недопустимое значение (0). Минимум 1")
 	}
-	if u.Replicas > 100 {
-		return errors.New("В конфигурации в пункте Replicas присвоено недопустимое значение (" + strconv.FormatUint(uint64(u.Replicas), 10) + "). Максимум 100. Совсем совесть потерял?")
+	if u.Replicas > 20 {
+		return errors.New("В конфигурации в пункте Replicas присвоено недопустимое значение (" + strconv.FormatUint(uint64(u.Replicas), 10) + "). Максимум 20. Совсем совесть потерял?")
 	}
 	if u.Stdout != nil && *u.Stdout == "" {
 		return errors.New("В конфигурации в пункте Stdout присвоено недопустимое значение (пустая строка)")
@@ -85,7 +64,7 @@ func (u UnitConfig) validate() error {
 	return nil
 }
 
-func (u *UnitConfig) parse() error {
+func (u *UnitConfig) Parse() error {
 	if err := u.parseName(); err != nil {
 		return err
 	}
@@ -99,34 +78,34 @@ func (u *UnitConfig) parseName() error {
 	if err != nil {
 		return err
 	}
-	u.processName = name
-	u.binPath = path
-	u.processArgs = append([]string{}, args...)
-	u.processArgs = append(u.processArgs, u.Args...)
+	u.ProcessName = name
+	u.BinPath = path
+	u.ProcessArgs = append([]string{}, args...)
+	u.ProcessArgs = append(u.ProcessArgs, u.Args...)
 	return nil
 }
 
 func (u *UnitConfig) parseAutorestart() {
 	switch u.AutoRestart {
-	case AUTORESTART_ALWAYS:
+	case constants.AUTORESTART_ALWAYS:
 		u.autorestart = true
-		u.restartTimes = nil
-	case AUTORESTART_LIMITED_TIMES:
+		u.RestartTimes = nil
+	case constants.AUTORESTART_LIMITED_TIMES:
 		u.autorestart = true
-		u.restartTimes = &u.Restartretries
-	case AUTORESTART_NEVER:
+		u.RestartTimes = &u.Restartretries
+	case constants.AUTORESTART_NEVER:
 		u.autorestart = false
-		u.restartTimes = nil
+		u.RestartTimes = nil
 	}
 }
 
 func (u *UnitConfig) parseSignal() {
 	switch u.Signal {
-	case SIGNAL_SIGTERM:
+	case constants.SIGNAL_SIGTERM:
 		u.signal = syscall.SIGTERM
-	case SIGNAL_SIGINT:
+	case constants.SIGNAL_SIGINT:
 		u.signal = syscall.SIGINT
-	case SIGNAL_SIGQUIT:
+	case constants.SIGNAL_SIGQUIT:
 		u.signal = syscall.SIGQUIT
 	}
 }
@@ -148,25 +127,25 @@ func (u UnitConfig) copy() UnitConfig {
 		Stdout: u.Stdout,
 		Stderr: u.Stderr,
 		Workingdir: u.Workingdir,
-		processName: u.processName,
-		processArgs: u.processArgs,
-		binPath: u.binPath,
+		ProcessName: u.ProcessName,
+		ProcessArgs: u.ProcessArgs,
+		BinPath: u.BinPath,
 		signal: u.signal,
 		autorestart: u.autorestart,
-		restartTimes: u.restartTimes,
+		RestartTimes: u.RestartTimes,
 	}
 }
 
-func (u UnitConfig) getProcessMeta() dto.ProcessMeta {
-	return dto.ProcessMeta{
-		Name: u.processName,
-		BinPath: u.binPath,
-		Args: u.processArgs,
+func (u UnitConfig) GetProcessMeta() ProcessMeta {
+	return ProcessMeta{
+		Name: u.ProcessName,
+		BinPath: u.BinPath,
+		Args: u.ProcessArgs,
 		Env: u.Env,
 		ProcessPath: u.Workingdir,
 		Autostart: u.Autostart,
 		Autorestart: u.autorestart,
-		RestartTimes: u.restartTimes,
+		RestartTimes: u.RestartTimes,
 		StopSignal: u.signal,
 		Exitcodes: u.Exitcodes,
 		Starttime: u.Starttime,

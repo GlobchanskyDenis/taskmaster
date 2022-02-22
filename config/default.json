@@ -1,4 +1,8 @@
 {
+	"Socket": {
+		"Stdout": null,
+		"Stderr": null
+	},
 	"Units": [
 		{
 			"Cmd": "vim",
@@ -16,12 +20,11 @@
 			"Stdout": null,
             "Stderr": null,
 			"Workingdir": "./test/"
-		},
-		{
-			"Cmd": "sleep 4000",
+		},{
+			"Cmd": "sleep 8000",
 			"Args": [],
 			"Env": [],
-			"Replicas": 1,
+			"Replicas": 2,
 			"Autostart": true,
 			"Autorestart": "Always",
 			"Starttime": 5,

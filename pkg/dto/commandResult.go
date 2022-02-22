@@ -1,12 +1,8 @@
 package dto
 
 import (
-
+	"time"
 )
-
-type Command struct {
-	Type uint
-}
 
 type CommandResult struct {
 	Pid        int
@@ -14,4 +10,6 @@ type CommandResult struct {
 	StatusCode uint
 	Status     string
 	Error      error
+	ExitCode   int
+	ChangeTime time.Time
 }

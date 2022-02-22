@@ -1,23 +1,26 @@
 package supervisor
 
 import (
-	"github.com/GlobchanskyDenis/taskmaster.git/internal/daemon"
+	"github.com/GlobchanskyDenis/taskmaster.git/internal/supervisor/unitMaster"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
 	"context"
+	"errors"
 	"sync"
-	// "time"
 )
 
 type Supervisor interface {
-	// NewUnit(rawName string, env []string) // сделать неэкспортируемым. Оно должно быть
-	GetStatusAllUnitsCli()
-	SetUnitsByConfig(confList UnitListConfig) error
+	StartByConfig(confList dto.UnitListConfig) error
+	StatusAll(dto.IPrinter)
+	Status(string, dto.IPrinter) error
+	Stop(string, dto.IPrinter) error
+	Start(string, dto.IPrinter) error
+	Restart(string, dto.IPrinter) error
 }
 
 type supervisor struct {
 	ctx      context.Context
 	wg       *sync.WaitGroup
-	unitList []*unitMeta
+	unitList []*unitMaster.Unit
 }
 
 func New(ctx context.Context) Supervisor {
@@ -27,42 +30,100 @@ func New(ctx context.Context) Supervisor {
 	}
 }
 
-func (s *supervisor) newUnit(conf *UnitConfig) { //, stopSignal syscall.Signal //rawName string, env []string
-	newSender := make(chan dto.Command)
-	newReceiver := make(chan dto.CommandResult)
-	ctx, _ := context.WithCancel(s.ctx)
+func (s *supervisor) StartByConfig(confList dto.UnitListConfig) error {
+	/*	Валидируем и парсим все конфиги  */
+	for _, conf := range confList {
+		if err := conf.Validate(); err != nil {
+			return err
+		}
+		if err := conf.Parse(); err != nil {
+			return err
+		}
+	}
 
-	unit := newUnit(newSender, newReceiver)
-	s.unitList = append(s.unitList, unit)
+	/*	Запускаем процессы  */
+	for _, conf := range confList {
+		master := unitMaster.New(s.ctx, conf)
+		s.unitList = append(s.unitList, master)
+	}
 
-	/*	Запускаю горутину процесса и сразу опрашиваю ее статус чтобы узнать ее pid  */
-	go daemon.RunAsync(ctx, newSender, newReceiver, conf.getProcessMeta()) // rawName, env
-	unit.getStatus()
+	/*	Получаем статусы процессов чтобы сразу знать их pid  */
+	for _, master := range s.unitList {
+		s.wg.Add(1)
+		go master.GetStatusAsync(s.wg)
+	}
+	s.wg.Wait()
+	return nil
 }
 
-func (s *supervisor) GetStatusAllUnitsCli() {
-	for _, unit := range s.unitList {
+func (s *supervisor) StatusAll(printer dto.IPrinter) {
+	for _, master := range s.unitList {
 		s.wg.Add(1)
-		go unit.getStatusAsync(s.wg)
+		go master.GetStatusAsync(s.wg)
 	}
 	s.wg.Wait()
 
-	for _, unit := range s.unitList {
-		unit.printShortStatus()
+	for _, master := range s.unitList {
+		master.PrintShortStatus(printer)
 	}
 }
 
-func (s *supervisor) SetUnitsByConfig(confList UnitListConfig) error {
-	for _, conf := range confList {
-		if err := conf.validate(); err != nil {
-			return err
-		}
-		if err := conf.parse(); err != nil {
-			return err
-		}
+func (s *supervisor) Status(processName string, printer dto.IPrinter) error {
+	master, err := s.findMasterByProcessName(processName)
+	if err != nil {
+		return err
 	}
-	for _, conf := range confList {
-		s.newUnit(conf)
-	}
+
+	s.wg.Add(1)
+	go master.GetStatusAsync(s.wg)
+	s.wg.Wait()
+
+	master.PrintFullStatus(printer)
 	return nil
+}
+
+func (s *supervisor) Stop(processName string, printer dto.IPrinter) error {
+	master, err := s.findMasterByProcessName(processName)
+	if err != nil {
+		return err
+	}
+
+	s.wg.Add(1)
+	go master.StopAsync(s.wg)
+	s.wg.Wait()
+	return nil
+}
+
+func (s *supervisor) Start(processName string, printer dto.IPrinter) error {
+	master, err := s.findMasterByProcessName(processName)
+	if err != nil {
+		return err
+	}
+
+	s.wg.Add(1)
+	go master.StartAsync(s.wg)
+	s.wg.Wait()
+	return nil
+}
+
+func (s *supervisor) Restart(processName string, printer dto.IPrinter) error {
+	master, err := s.findMasterByProcessName(processName)
+	if err != nil {
+		return err
+	}
+
+	s.wg.Add(1)
+	go master.RestartAsync(s.wg)
+	s.wg.Wait()
+	return nil
+}
+
+// TODO -- в конфигурационнике после парсинга перепроверять чтобы не было одинаковых процессов
+func (s *supervisor) findMasterByProcessName(processName string) (*unitMaster.Unit, error) {
+	for _, master := range s.unitList {
+		if master.GetName() == processName {
+			return master, nil
+		}
+	}
+	return nil, errors.New("Процесс " + processName + " не найден")
 }

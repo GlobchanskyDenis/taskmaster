@@ -7,27 +7,53 @@ import (
 	"os"
 	"time"
 	"os/signal"
+	"fmt"
 )
 
-func main() {
+/*	Реализация интерфейса */
+type Printer struct {}
 
-	unitListConfig, err := initializeConfigs("config/config.json")
+func (printer Printer) Printf(format string, args ...interface{}) {
+	fmt.Printf(format, args...)
+}
+
+func main() {
+	if err := parseFlags(); err != nil {
+		println(err.Error())
+		os.Exit(1)
+	}
+
+	unitListConfig, err := initializeConfigs(configPath)
 	if err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	newSupervisor := supervisor.New(ctx)
-	if err := newSupervisor.SetUnitsByConfig(unitListConfig); err != nil {
+	if err := newSupervisor.StartByConfig(unitListConfig); err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
 
-	// newSupervisor.NewUnit("sleep 4000", []string{})
+	time.Sleep(time.Second * 1)
 
-	time.Sleep(time.Second * 2)
+	newSupervisor.StatusAll(Printer{})
 
-	newSupervisor.GetStatusAllUnitsCli()
+	time.Sleep(time.Second * 1)
+
+	if err := newSupervisor.Status("sleep", Printer{}); err != nil {
+		println(err.Error())
+	}
+
+	time.Sleep(time.Second * 1)
+
+	if err := newSupervisor.Stop("sleep", Printer{}); err != nil {
+		println(err.Error())
+	}
+
+	time.Sleep(time.Second * 1)
+
+	newSupervisor.StatusAll(Printer{})
 
 	waitForGracefullShutdown(cancel)
 }
