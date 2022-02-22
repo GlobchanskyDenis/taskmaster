@@ -1,0 +1,21 @@
+{
+	"Units": [
+		{
+			"Cmd": "./sample_autorestart_bin",
+			"Args": [],
+			"Env": [],
+			"Replicas": 1,
+			"Autostart": true,
+			"Autorestart": "Limited",
+			"Starttime": 5,
+			"Stoptime": 1,
+			"Restartretries": 3,
+			"Signal": "SIGQUIT",
+			"Exitcodes": [1, 100],
+			"Umask": "022",
+			"Stdout": null,
+            "Stderr": null,
+			"Workingdir": null
+		}
+	]
+}

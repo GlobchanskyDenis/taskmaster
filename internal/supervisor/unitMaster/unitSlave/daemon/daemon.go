@@ -26,6 +26,8 @@ type processAsync struct {
 	lastError      error
 	exitCode       int
 	lastChangeTime time.Time
+
+	restartedTimes uint
 	
 	cmd *exec.Cmd
 	mu  *sync.Mutex
@@ -53,7 +55,8 @@ func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dt
 		d.handleError(err)
 	} else {
 		/*	Блокирующая команда. Заканчивается только по сигналу останова (gracefull shutdown через контекст)  */
-		d.listen()
+		go d.listen()
+		d.handleAutorestart()
 	}
 }
 
@@ -69,8 +72,48 @@ func (d *daemon) newProcess() error {
 	d.status = "Процесс успешно стартовал"
 	d.lastChangeTime = time.Now()
 	d.mu.Unlock()
-	go d.handleProcessInterrupt()
 	return nil
+}
+
+/*	Блокирующая функция - делает столько авторестартов, сколько задано конфигурационником и только тогда функция завершается  */
+func (d *daemon) handleAutorestart() {
+	for {
+		/*	Функция прервется когда процесс завершится (по любой причине)  */
+		d.handleProcessInterrupt()
+		/*	В случае если процесс был остановлен вручную - авторестарт делать не нужно  */
+		if d.isStopped() == true {
+			return
+		}
+		/*	В случае если авторестарт выключен в конфигурационнике -- аналогично  */
+		if d.Autorestart == false {
+			return
+		}
+		/*	Если превысил максимальное количество рестартов  */
+		if d.RestartTimes != nil && *d.RestartTimes <= d.restartedTimes {
+			return
+		} else {
+			d.restartedTimes++
+		}
+		/*	Если код завершения не занесен в конфигурационник как разрешенный для авторестарта - авторестарт не состоится  */
+		if d.isExitCodePermittedForRestart() == false {
+			return
+		}
+		println("Авторестартую")
+		/*	Принудительно стартую. Если ошибка - пофиг, значит плюс еще одна итерация к авторестарту  */
+		_ = d.newProcess()
+	}
+}
+
+/*	Авторестарт разрешен только если код завершения процесса (хрунится внутри) разрешен в конфигурационнике  */
+func (d *daemon) isExitCodePermittedForRestart() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, exitCode := range d.Exitcodes {
+		if d.exitCode == exitCode {
+			return true
+		}
+	}
+	return false
 }
 
 func (d *daemon) listen() {
@@ -120,9 +163,11 @@ func (d *daemon) handleProcessInterrupt() {
 		} else {
 			fmt.Printf("\tPid %d \tExited? %#v \tExitCode %d \tString %s\n", exitState.Pid(), exitState.Exited(), exitState.ExitCode(), exitState.String())
 			d.mu.Lock()
-			d.statusCode = constants.STATUS_DEAD
-			d.status = "Процесс убит извне " + exitState.String()
-			d.lastChangeTime = time.Now()
+			if d.statusCode != constants.STATUS_STOPPED {
+				d.statusCode = constants.STATUS_DEAD
+				d.status = "Процесс убит извне " + exitState.String()
+				d.lastChangeTime = time.Now()
+			}
 			d.exitCode = exitState.ExitCode()
 			d.mu.Unlock()
 		}

@@ -35,62 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	time.Sleep(time.Second * 1)
-
-	newSupervisor.StatusAll(Printer{})
-
-	time.Sleep(time.Second * 1)
-
-	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
-		println(err.Error())
-	}
-
-	time.Sleep(time.Second * 1)
-
-	println("stop")
-	if err := newSupervisor.Stop("sample_simple_bin", Printer{}); err != nil {
-		println(err.Error())
-	}
-
-	time.Sleep(time.Second * 1)
-
-	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
-		println(err.Error())
-	}
-
-	time.Sleep(time.Second * 3)
-
-	println("start")
-	if err := newSupervisor.Start("sample_simple_bin", Printer{}); err != nil {
-		println(err.Error())
-	}
-
-	time.Sleep(time.Second * 1)
-
-	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
-		println(err.Error())
-	}
-
-	time.Sleep(time.Second * 1)
-
-	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
-		println(err.Error())
-	}
-
-	time.Sleep(time.Second * 1)
-
-	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
-		println(err.Error())
-	}
-
-	time.Sleep(time.Second * 1)
-
-	newSupervisor.StatusAll(Printer{})
+	debugAutorestart(newSupervisor)
 
 	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())
 }
