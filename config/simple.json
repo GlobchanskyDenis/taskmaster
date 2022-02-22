@@ -8,7 +8,7 @@
 			"Autostart": true,
 			"Autorestart": "Always",
 			"Starttime": 5,
-			"Stoptime": 2,
+			"Stoptime": 1,
 			"Restartretries": 0,
 			"Signal": "SIGQUIT",
 			"Exitcodes": [],

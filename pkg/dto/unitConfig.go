@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"github.com/GlobchanskyDenis/taskmaster.git/pkg/processName"
+	"github.com/GlobchanskyDenis/taskmaster.git/pkg/parser"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"syscall"
 	"strconv"
@@ -74,7 +74,7 @@ func (u *UnitConfig) Parse() error {
 }
 
 func (u *UnitConfig) parseName() error {
-	name, path, args, err := processName.Parse(u.Cmd)
+	name, path, args, err := parser.ParseProcessName(u.Cmd)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package processName
+package parser
 
 import (
 	"path/filepath"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func Parse(rawName string) (name string, path string, args []string, err error) {
+func ParseProcessName(rawName string) (name string, path string, args []string, err error) {
 	cleanedRawName := strings.Trim(rawName, " ")
 	if cleanedRawName == "" {
 		return "", "", nil, errors.New("Имя процесса не может быть пустым")

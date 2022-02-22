@@ -41,13 +41,36 @@ func main() {
 
 	time.Sleep(time.Second * 1)
 
-	if err := newSupervisor.Status("sleep", Printer{}); err != nil {
+	println("status")
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
 		println(err.Error())
 	}
 
 	time.Sleep(time.Second * 1)
 
-	if err := newSupervisor.Stop("sleep", Printer{}); err != nil {
+	println("stop")
+	if err := newSupervisor.Stop("sample_simple_bin", Printer{}); err != nil {
+		println(err.Error())
+	}
+
+	time.Sleep(time.Second * 1)
+
+	println("status")
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+		println(err.Error())
+	}
+
+	time.Sleep(time.Second * 3)
+
+	println("start")
+	if err := newSupervisor.Start("sample_simple_bin", Printer{}); err != nil {
+		println(err.Error())
+	}
+
+	time.Sleep(time.Second * 1)
+
+	println("status")
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
 		println(err.Error())
 	}
 
@@ -55,10 +78,10 @@ func main() {
 
 	newSupervisor.StatusAll(Printer{})
 
-	waitForGracefullShutdown(cancel)
+	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())
 }
 
-func waitForGracefullShutdown(cancel context.CancelFunc) {
+func waitForGracefullShutdown(cancel context.CancelFunc, waitTime uint) {
 	/*	Отлавливаю системный вызов останова программы. Это блокирующая операция  */
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit,
@@ -76,5 +99,5 @@ func waitForGracefullShutdown(cancel context.CancelFunc) {
 	**	-- времени таймаута БД (в строке dsn к базе данных jwtgost конфигуратора)
 	**	-- времени ожидания внешних сервисов (в настройках конфигуратора)
 	**	+ 100 миллисекунд на одного воркера (про запас)  */
-	time.Sleep(3000 * time.Millisecond)
+	time.Sleep(time.Duration(waitTime) * time.Millisecond * 1000 + 500)
 }

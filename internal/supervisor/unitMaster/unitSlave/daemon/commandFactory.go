@@ -3,8 +3,6 @@ package daemon
 import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
-	"github.com/GlobchanskyDenis/taskmaster.git/pkg/utils/osProcess"
-	"syscall"
 	"errors"
 	"time"
 	"fmt"
@@ -41,20 +39,20 @@ func (d *daemon) commandFactory(command dto.Command) {
 
 func (d *daemon) killProcess() error {
 	if d.isActive() == true {
-		if err := d.process.Kill(); err != nil {
+		if err := d.cmd.Process.Kill(); err != nil {
 			return err
 		}
 		d.mu.Lock()
-		d.process = nil
+		d.cmd = nil
 		d.statusCode = constants.STATUS_DEAD
 		d.status = "Процесс убит командой пользователя"
 		d.lastChangeTime = time.Now()
 		d.mu.Unlock()
 	} else if d.isDead() == false {
 		/*	*Добиваю* процесс (не обрабатываю ошибку)  */
-		d.process.Kill()
+		d.cmd.Process.Kill()
 		d.mu.Lock()
-		d.process = nil
+		d.cmd = nil
 		d.statusCode = constants.STATUS_DEAD
 		d.status = "Процесс убит командой пользователя"
 		d.lastChangeTime = time.Now()
@@ -65,7 +63,7 @@ func (d *daemon) killProcess() error {
 
 func (d *daemon) stopProcess() error {
 	if d.isActive() == true {
-		if err := d.process.Signal(d.ProcessMeta.StopSignal); err != nil {
+		if err := d.cmd.Process.Signal(d.ProcessMeta.StopSignal); err != nil {
 			return err
 		}
 		d.mu.Lock()
@@ -82,18 +80,15 @@ func (d *daemon) startProcess() error {
 	if d.isActive() == true {
 		return nil
 	}
-
-	process, err := osProcess.New(d.Name, d.BinPath, d.Args, d.Env, syscall.SIGINT) // SIGINT - сигнал который получит процесс в случае остановки родительского процесса
-	if err != nil {
-		return err
+	if d.isDead() == false {
+		/*	Сначала надо добить старый процесс  */
+		if err := d.killProcess(); err != nil {
+			return err
+		}
+		if err := d.newProcess(); err != nil {
+			return err
+		}
 	}
-	d.mu.Lock()
-	d.process = process
-	d.pid = process.Pid
-	d.statusCode = constants.STATUS_ACTIVE
-	d.lastChangeTime = time.Now()
-	d.exitCode = 0
-	d.mu.Unlock()
 	return nil
 }
 
