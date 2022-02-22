@@ -76,6 +76,20 @@ func main() {
 
 	time.Sleep(time.Second * 1)
 
+	println("status")
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+		println(err.Error())
+	}
+
+	time.Sleep(time.Second * 1)
+
+	println("status")
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+		println(err.Error())
+	}
+
+	time.Sleep(time.Second * 1)
+
 	newSupervisor.StatusAll(Printer{})
 
 	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())

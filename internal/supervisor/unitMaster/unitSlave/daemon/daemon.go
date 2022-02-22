@@ -58,7 +58,7 @@ func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dt
 }
 
 func (d *daemon) newProcess() error {
-	cmd, err := process.New(d.Name, d.BinPath, d.Args, d.Env)
+	cmd, err := process.New(d.BinPath + d.Name, d.BinPath, d.Args, d.Env)
 	if err != nil {
 		return err
 	}
@@ -69,11 +69,11 @@ func (d *daemon) newProcess() error {
 	d.status = "Процесс успешно стартовал"
 	d.lastChangeTime = time.Now()
 	d.mu.Unlock()
+	go d.handleProcessInterrupt()
 	return nil
 }
 
 func (d *daemon) listen() {
-	go d.handleProcessInterrupt()
 	for {
 		select {
 		case command := <- d.receiver:
