@@ -17,6 +17,7 @@ type Unit struct {
 	procPath *string
 	sender   chan<- dto.Command
 	receiver <-chan dto.CommandResult
+	logger   dto.ILogger
 
 	statusCode     uint
 	status         string
@@ -26,7 +27,7 @@ type Unit struct {
 	lastChangeTime time.Time
 }
 
-func New(parentCtx context.Context, conf *dto.UnitConfig) *Unit {
+func New(parentCtx context.Context, conf *dto.UnitConfig, logger dto.ILogger) *Unit {
 	newSender := make(chan dto.Command)
 	newReceiver := make(chan dto.CommandResult)
 	var slave = &Unit{
@@ -35,6 +36,7 @@ func New(parentCtx context.Context, conf *dto.UnitConfig) *Unit {
 		procPath: conf.Workingdir,
 		sender: newSender,
 		receiver: newReceiver,
+		logger: logger,
 		statusCode: constants.STATUS_ACTIVE,
 		status: "Процесс отправлен на запуск",
 		lastError: nil,
@@ -42,51 +44,43 @@ func New(parentCtx context.Context, conf *dto.UnitConfig) *Unit {
 
 	ctx, _ := context.WithCancel(parentCtx)
 	/*	Запускаю горутину процесса  */
-	go daemon.RunAsync(ctx, newSender, newReceiver, conf.GetProcessMeta())
+	go daemon.RunAsync(ctx, newSender, newReceiver, conf.GetProcessMeta(), logger)
 	return slave
 }
 
 func (slave *Unit) GetStatusAsync(wg *sync.WaitGroup, amountLogs uint) {
-	// fmt.Println("unitSlave status send " + slave.name)
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_STATUS,
-		AmountLogs: amountLogs, // TODO - сделать зависимость от флагов команды
+		AmountLogs: amountLogs,
 	}
 	result := <- slave.receiver
-	// fmt.Println("unitSlave status received " + slave.name)
 	slave.handleResponse(result)
 	wg.Done()
 }
 
 func (slave *Unit) StopAsync(wg *sync.WaitGroup) {
-	// fmt.Println("unitSlave stop send " + slave.name)
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_STOP,
 	}
 	result := <- slave.receiver
-	// fmt.Println("unitSlave stop received " + slave.name)
 	slave.handleResponse(result)
 	wg.Done()
 }
 
 func (slave *Unit) StartAsync(wg *sync.WaitGroup) {
-	// fmt.Println("unitSlave stop send " + slave.name)
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_START,
 	}
 	result := <- slave.receiver
-	// fmt.Println("unitSlave stop received " + slave.name)
 	slave.handleResponse(result)
 	wg.Done()
 }
 
 func (slave *Unit) RestartAsync(wg *sync.WaitGroup) {
-	// fmt.Println("unitSlave stop send " + slave.name)
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_RESTART,
 	}
 	result := <- slave.receiver
-	// fmt.Println("unitSlave stop received " + slave.name)
 	slave.handleResponse(result)
 	wg.Done()
 }
@@ -128,7 +122,7 @@ func (slave *Unit) stringStatusCode() string {
 	case constants.STATUS_DEAD:
 		return "inactive (dead)"
 	case constants.STATUS_ERROR:
-		return constants.RED + "error status" + constants.NO_COLOR + " exit code " + strconv.Itoa(slave.exitCode)// TODO -- тут нужно добавить код ошибки
+		return constants.RED + "error status" + constants.NO_COLOR + " exit code " + strconv.Itoa(slave.exitCode)
 	default:
 		return constants.RED_BG + "unknown status" + constants.NO_COLOR
 	}

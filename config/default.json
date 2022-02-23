@@ -1,7 +1,10 @@
 {
+	"Logger": {
+		"DaemonName": "taskmaster",
+		"LogFolder": "./logs/",
+		"Permissions": "777"
+	},
 	"Socket": {
-		"Stdout": null,
-		"Stderr": null
 	},
 	"Units": [
 		{
@@ -17,8 +20,6 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [],
 			"Umask": "022",
-			"Stdout": null,
-            "Stderr": null,
 			"Workingdir": "./test/"
 		},{
 			"Cmd": "sleep 8000",
@@ -33,8 +34,6 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [],
 			"Umask": "022",
-			"Stdout": null,
-            "Stderr": null,
 			"Workingdir": "./test/"
 		}
 	]

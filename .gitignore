@@ -1,3 +1,4 @@
 socket_bin
 sample_simple_bin
 sample_autorestart_bin
+logs/

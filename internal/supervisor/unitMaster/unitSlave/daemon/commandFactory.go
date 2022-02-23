@@ -11,28 +11,35 @@ import (
 func (d *daemon) commandFactory(command dto.Command) {
 	switch command.Type {
 	case constants.COMMAND_STATUS:
+		// d.logInfo("Получена команда status")
 		d.sendStatusResult(command.AmountLogs)
 	case constants.COMMAND_STOP:
+		// d.logInfo("Получена команда stop")
 		if err := d.stopProcess(); err != nil {
 			d.handleError(err)
 		}
 		d.sendStatusResult(0)
 	case constants.COMMAND_START:
+		// d.logInfo("Получена команда start")
 		if err := d.startProcess(); err != nil {
 			d.handleError(err)
 		}
 		d.sendStatusResult(0)
 	case constants.COMMAND_RESTART:
+		// d.logInfo("Получена команда restart")
 		if err := d.restartProcess(); err != nil {
 			d.handleError(err)
 		}
 		d.sendStatusResult(0)
 	case constants.COMMAND_KILL:
+		// d.logInfo("Получена команда kill")
 		if err := d.killProcess(); err != nil {
 			d.handleError(err)
 		}
 	default:
-		d.handleError(errors.New(fmt.Sprintf("Команда не найдена %d", int(constants.COMMAND_STATUS))))
+		message := fmt.Sprintf("Команда не найдена %d", int(constants.COMMAND_STATUS))
+		// d.logWarning(nil, message)
+		d.handleError(errors.New(message))
 		d.sendStatusResult(0)
 	}
 }

@@ -1,4 +1,9 @@
 {
+	"Logger": {
+		"DaemonName": "taskmaster",
+		"LogFolder": "./logs/",
+		"Permissions": "777"
+	},
 	"Units": [
 		{
 			"Cmd": "./sample_autorestart_bin",
@@ -13,8 +18,6 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [1, 100],
 			"Umask": "022",
-			"Stdout": null,
-            "Stderr": null,
 			"Workingdir": null
 		}
 	]

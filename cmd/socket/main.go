@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/GlobchanskyDenis/taskmaster.git/internal/supervisor"
+	"github.com/GlobchanskyDenis/taskmaster.git/pkg/utils/file_logger"
 	"context"
 	"syscall"
 	"os"
@@ -18,25 +19,37 @@ func (printer Printer) Printf(format string, args ...interface{}) {
 }
 
 func main() {
+	/*	Обрабатываем флаги (если они есть в наличии)  */
 	if err := parseFlags(); err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
 
+	/*	Инициализируем конфиги всех пакетов  */
 	unitListConfig, err := initializeConfigs(configPath)
 	if err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
+
+	/*	Инициализируем логгера. Сама сущность хранится в самом пакете  */
+	if err := file_logger.NewLogger(); err != nil {
+		println(err.Error())
+		os.Exit(1)
+	}
+
+	/*	Создаем и инициализируем наш супервизор  */
 	ctx, cancel := context.WithCancel(context.Background())
-	newSupervisor := supervisor.New(ctx)
+	newSupervisor := supervisor.New(ctx, file_logger.GLogger)
 	if err := newSupervisor.StartByConfig(unitListConfig); err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
 
-	debugStopStart(newSupervisor)
+	/*	Это просто эмуляция команд. Только на время отладки  */
+	debugSimple(newSupervisor)
 
+	/*	Механизм gracefull shutdown реализуется тут  */
 	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())
 }
 
@@ -53,10 +66,6 @@ func waitForGracefullShutdown(cancel context.CancelFunc, waitTime uint) {
 	/*	Посылаю каждому воркеру сигнал останова  */
 	cancel()
 
-	/*	Чтобы не усложнять бизнес логику - простой способ подождать завершения всех
-	**	воркеров. Время стоит расчитывать как сумму из:
-	**	-- времени таймаута БД (в строке dsn к базе данных jwtgost конфигуратора)
-	**	-- времени ожидания внешних сервисов (в настройках конфигуратора)
-	**	+ 100 миллисекунд на одного воркера (про запас)  */
+	/*	Ожидаем завершения всех команд. Время ожидания берется из конфигурационника  */
 	time.Sleep(time.Duration(waitTime) * time.Millisecond * 1000 + 500)
 }

@@ -1,4 +1,9 @@
 {
+	"Logger": {
+		"DaemonName": "taskmaster",
+		"LogFolder": "./logs/",
+		"Permissions": "777"
+	},
 	"Units": [
 		{
 			"Cmd": "./sample_simple_bin",
@@ -13,8 +18,6 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [],
 			"Umask": "022",
-			"Stdout": null,
-            "Stderr": null,
 			"Workingdir": null
 		}
 	]

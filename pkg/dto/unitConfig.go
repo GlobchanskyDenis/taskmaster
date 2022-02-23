@@ -21,8 +21,6 @@ type UnitConfig struct {
 	Signal          string   `conf:"Signal"`         // Каким сигналом останавливать процесс. Это поле нужно парсить. Есть три варианта сигнала останова SIGTERM, SIGINT, SIGQUIT
 	Exitcodes       []int    `conf:"Exitcodes"`      // Список кодов завершения программы, после которых можно делать рестарт программы
 	Umask           string   `conf:"Umask"`          // ???
-	Stdout          *string	 `conf:"Stdout"`         // Файл для перенаправления вместо стандартного потока вывода. null если не нужно. Это поле нужно парсить
-	Stderr          *string	 `conf:"Stderr"`         // Файл для перенаправления вместо стандартного потока ошибок. null если не нужно. Это поле нужно парсить
 	Workingdir      *string	 `conf:"Workingdir"`     // установка каталога для процесса (относится к chroot)
 
 	ProcessName     string         `conf:"-"`
@@ -54,12 +52,6 @@ func (u UnitConfig) Validate() error {
 	}
 	if u.Replicas > 20 {
 		return errors.New("В конфигурации в пункте Replicas присвоено недопустимое значение (" + strconv.FormatUint(uint64(u.Replicas), 10) + "). Максимум 20. Совсем совесть потерял?")
-	}
-	if u.Stdout != nil && *u.Stdout == "" {
-		return errors.New("В конфигурации в пункте Stdout присвоено недопустимое значение (пустая строка)")
-	}
-	if u.Stderr != nil && *u.Stderr == "" {
-		return errors.New("В конфигурации в пункте Stderr присвоено недопустимое значение (пустая строка)")
 	}
 	return nil
 }
@@ -124,8 +116,6 @@ func (u UnitConfig) copy() UnitConfig {
 		Signal: u.Signal,
 		Exitcodes: u.Exitcodes,
 		Umask: u.Umask,
-		Stdout: u.Stdout,
-		Stderr: u.Stderr,
 		Workingdir: u.Workingdir,
 		ProcessName: u.ProcessName,
 		ProcessArgs: u.ProcessArgs,

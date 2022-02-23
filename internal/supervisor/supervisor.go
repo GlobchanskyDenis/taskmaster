@@ -9,7 +9,7 @@ import (
 )
 
 type Supervisor interface {
-	StartByConfig(confList dto.UnitListConfig) error
+	StartByConfig(dto.UnitListConfig) error
 	StatusAll(dto.IPrinter)
 	Status(string, dto.IPrinter, uint) error
 	Stop(string, dto.IPrinter) error
@@ -20,13 +20,15 @@ type Supervisor interface {
 type supervisor struct {
 	ctx      context.Context
 	wg       *sync.WaitGroup
+	logger   dto.ILogger
 	unitList []*unitMaster.Unit
 }
 
-func New(ctx context.Context) Supervisor {
+func New(ctx context.Context, logger dto.ILogger) Supervisor {
 	return &supervisor{
 		ctx: ctx,
 		wg: &sync.WaitGroup{},
+		logger: logger,
 	}
 }
 
@@ -43,7 +45,7 @@ func (s *supervisor) StartByConfig(confList dto.UnitListConfig) error {
 
 	/*	Запускаем процессы  */
 	for _, conf := range confList {
-		master := unitMaster.New(s.ctx, conf)
+		master := unitMaster.New(s.ctx, conf, s.logger)
 		s.unitList = append(s.unitList, master)
 	}
 
@@ -57,6 +59,7 @@ func (s *supervisor) StartByConfig(confList dto.UnitListConfig) error {
 }
 
 func (s *supervisor) StatusAll(printer dto.IPrinter) {
+	s.logInfo("Получена команда status-all")
 	for _, master := range s.unitList {
 		s.wg.Add(1)
 		go master.GetStatusAsync(s.wg, 0)
@@ -69,8 +72,10 @@ func (s *supervisor) StatusAll(printer dto.IPrinter) {
 }
 
 func (s *supervisor) Status(processName string, printer dto.IPrinter, amountLogs uint) error {
+	s.logInfo("Получена команда status процесса " + processName)
 	master, err := s.findMasterByProcessName(processName)
 	if err != nil {
+		s.logWarning(err, "")
 		return err
 	}
 
@@ -83,8 +88,10 @@ func (s *supervisor) Status(processName string, printer dto.IPrinter, amountLogs
 }
 
 func (s *supervisor) Stop(processName string, printer dto.IPrinter) error {
+	s.logInfo("Получена команда stop процесса " + processName)
 	master, err := s.findMasterByProcessName(processName)
 	if err != nil {
+		s.logWarning(err, "")
 		return err
 	}
 
@@ -95,8 +102,10 @@ func (s *supervisor) Stop(processName string, printer dto.IPrinter) error {
 }
 
 func (s *supervisor) Start(processName string, printer dto.IPrinter) error {
+	s.logInfo("Получена команда start процесса " + processName)
 	master, err := s.findMasterByProcessName(processName)
 	if err != nil {
+		s.logWarning(err, "")
 		return err
 	}
 
@@ -107,8 +116,10 @@ func (s *supervisor) Start(processName string, printer dto.IPrinter) error {
 }
 
 func (s *supervisor) Restart(processName string, printer dto.IPrinter) error {
+	s.logInfo("Получена команда restart процесса " + processName)
 	master, err := s.findMasterByProcessName(processName)
 	if err != nil {
+		s.logWarning(err, "")
 		return err
 	}
 
@@ -126,4 +137,16 @@ func (s *supervisor) findMasterByProcessName(processName string) (*unitMaster.Un
 		}
 	}
 	return nil, errors.New("Процесс " + processName + " не найден")
+}
+
+func (s *supervisor) logInfo(message string) {
+	s.logger.LogInfo(map[string]interface{}{
+		"entity": "supervisor",
+	}, message)
+}
+
+func (s *supervisor) logWarning(err error, message string) {
+	s.logger.LogWarning(map[string]interface{}{
+		"entity": "supervisor",
+	}, err, message)
 }

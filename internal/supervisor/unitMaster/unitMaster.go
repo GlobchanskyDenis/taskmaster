@@ -11,14 +11,16 @@ import (
 type Unit struct {
 	name     string
 	replicas []*unitSlave.Unit
+	logger   dto.ILogger
 }
 
-func New(parentCtx context.Context, conf *dto.UnitConfig) *Unit {
+func New(parentCtx context.Context, conf *dto.UnitConfig, logger dto.ILogger) *Unit {
 	var master = &Unit{
 		name: conf.ProcessName,
+		logger: logger,
 	}
 	for i:=uint(0); i<conf.Replicas; i++ {
-		master.replicas = append(master.replicas, unitSlave.New(parentCtx, conf))
+		master.replicas = append(master.replicas, unitSlave.New(parentCtx, conf, logger))
 	}
 	return master
 }

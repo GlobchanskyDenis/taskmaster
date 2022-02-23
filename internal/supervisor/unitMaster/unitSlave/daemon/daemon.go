@@ -16,9 +16,10 @@ import (
 type daemon struct {
 	dto.ProcessMeta
 	processAsync
-	ctx                  context.Context
-	receiver             <-chan dto.Command
-	sender               chan<- dto.CommandResult
+	ctx      context.Context
+	receiver <-chan dto.Command
+	sender   chan<- dto.CommandResult
+	logger   dto.ILogger
 }
 
 type processAsync struct {
@@ -38,11 +39,12 @@ type processAsync struct {
 	mu  *sync.Mutex
 }
 
-func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta) *daemon {
+func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta, logger dto.ILogger) *daemon {
 	return &daemon{
 		ctx: ctx,
 		receiver: receiver,
 		sender: sender,
+		logger: logger,
 		ProcessMeta: meta,
 		processAsync: processAsync{
 			statusCode: constants.STATUS_DEAD,
@@ -52,8 +54,8 @@ func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.Com
 	}
 }
 
-func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta) {
-	d := new(ctx, receiver, sender, meta)
+func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta, logger dto.ILogger) {
+	d := new(ctx, receiver, sender, meta, logger)
 	if err := d.newProcess(); err != nil {
 		println("ERROR!!!")
 		println(err.Error())
@@ -87,6 +89,27 @@ func (d *daemon) newProcess() error {
 	go d.handleAutorestart()
 
 	return nil
+}
+
+func (d *daemon) logError(err error, message string) {
+	d.logger.LogError(map[string]interface{}{
+		"entity": "process",
+		"cmd": d.Name,
+	}, err, message)
+}
+
+func (d *daemon) logWarning(err error, message string) {
+	d.logger.LogWarning(map[string]interface{}{
+		"entity": "process",
+		"cmd": d.Name,
+	}, err, message)
+}
+
+func (d *daemon) logInfo(message string) {
+	d.logger.LogInfo(map[string]interface{}{
+		"entity": "process",
+		"cmd": d.Name,
+	}, message)
 }
 
 /*	Блокирующая функция - делает столько авторестартов, сколько задано конфигурационником и только тогда функция завершается  */
@@ -150,10 +173,10 @@ func (d *daemon) listenStdout() {
 		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
 		**	сохранение логов в самой горутине для команды status)  */
 		newLogLine := scanner.Bytes()
+		/*	Добавляю лог в слайс для быстрой отдачи при команде status */
 		d.addLog(string(newLogLine))
-		// TODO добавить логгер
-
-		// fmt.Printf("==%s==\n", newLogLine)
+		/*	Логгирую в файл  */
+		d.logInfo(string(newLogLine))
 	}
 	if err := scanner.Err(); err != nil {
 		d.handleError(err)
@@ -167,10 +190,10 @@ func (d *daemon) listenStderr() {
 		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
 		**	сохранение логов в самой горутине для команды status)  */
 		newLogLine := scanner.Bytes()
+		/*	Добавляю лог в слайс для быстрой отдачи при команде status */
 		d.addLog(string(newLogLine))
-		// TODO добавить логгер
-
-		// fmt.Printf("==%s==\n", newLogLine)
+		/*	Логгирую в файл  */
+		d.logWarning(nil, string(newLogLine))
 	}
 	if err := scanner.Err(); err != nil {
 		d.handleError(err)
@@ -220,6 +243,8 @@ func (d *daemon) handleError(err error) {
 	d.status = "Произошла ошибка"
 	d.lastChangeTime = time.Now()
 	d.mu.Unlock()
+	/*	Логгирую в файл  */
+	d.logError(err, "")
 }
 
 func (d *daemon) handleProcessInterrupt() {
@@ -238,6 +263,8 @@ func (d *daemon) handleProcessInterrupt() {
 			}
 			d.exitCode = exitState.ExitCode()
 			d.mu.Unlock()
+			/*	Логгирую в файл  */
+			d.logWarning(nil, "Процесс остановился " + exitState.String())
 		}
 	} else {
 		fmt.Printf("Не могу отслеживать прерывание процесса так как он не создан (равен nil)")
