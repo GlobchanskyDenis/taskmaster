@@ -93,3 +93,19 @@ func debugLogs(newSupervisor supervisor.Supervisor) {
 		println(err.Error())
 	}
 }
+
+func debugStopStart(newSupervisor supervisor.Supervisor) {
+	for {
+		time.Sleep(time.Second * 2)
+		println("\n---- STOP ----\n")
+		if err := newSupervisor.Stop("sample_simple_bin", Printer{}); err != nil {
+			println(err.Error())
+		}
+
+		time.Sleep(time.Second * 2)
+		println("\n---- START ----\n")
+		if err := newSupervisor.Start("sample_simple_bin", Printer{}); err != nil {
+			println(err.Error())
+		}
+	}
+}

@@ -61,7 +61,6 @@ func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dt
 	} else {
 		/*	Блокирующая команда. Заканчивается только по сигналу останова (gracefull shutdown через контекст)  */
 		go d.listen()
-		d.handleAutorestart()
 	}
 }
 
@@ -85,6 +84,7 @@ func (d *daemon) newProcess() error {
 
 	go d.listenStdout()
 	go d.listenStderr()
+	go d.handleAutorestart()
 
 	return nil
 }
@@ -153,7 +153,7 @@ func (d *daemon) listenStdout() {
 		d.addLog(string(newLogLine))
 		// TODO добавить логгер
 
-		fmt.Printf("==%s==\n", newLogLine)
+		// fmt.Printf("==%s==\n", newLogLine)
 	}
 	if err := scanner.Err(); err != nil {
 		d.handleError(err)
@@ -170,7 +170,7 @@ func (d *daemon) listenStderr() {
 		d.addLog(string(newLogLine))
 		// TODO добавить логгер
 
-		fmt.Printf("==%s==\n", newLogLine)
+		// fmt.Printf("==%s==\n", newLogLine)
 	}
 	if err := scanner.Err(); err != nil {
 		d.handleError(err)
