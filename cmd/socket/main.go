@@ -35,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	debugAutorestart(newSupervisor)
+	debugLogs(newSupervisor)
 
 	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())
 }

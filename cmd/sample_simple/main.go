@@ -2,11 +2,12 @@ package main
 
 import (
 	"time"
+	"fmt"
 )
 
 func main() {
 	for {
-		println("Hello world")
-		time.Sleep(time.Second * 3)
+		fmt.Println("Hello world")
+		time.Sleep(time.Second * 2)
 	}
 }

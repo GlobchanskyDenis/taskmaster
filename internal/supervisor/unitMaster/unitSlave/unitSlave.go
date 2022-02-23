@@ -23,6 +23,7 @@ type Unit struct {
 	status         string
 	lastError      error
 	exitCode       int
+	logs           []string
 	lastChangeTime time.Time
 }
 
@@ -50,6 +51,7 @@ func (slave *Unit) GetStatusAsync(wg *sync.WaitGroup) {
 	// fmt.Println("unitSlave status send " + slave.name)
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_STATUS,
+		AmountLogs: 10, // TODO - сделать зависимость от флагов команды
 	}
 	result := <- slave.receiver
 	// fmt.Println("unitSlave status received " + slave.name)
@@ -112,7 +114,10 @@ func (slave *Unit) PrintFullStatus(prefix string, printer dto.IPrinter) {
 	if slave.lastError != nil {
 		printer.Printf("%s    Error: %s%s%s\n", prefix, constants.RED, slave.lastError.Error(), constants.NO_COLOR)
 	}
-	// TODO -- тут нужно выводить последние логи в антихронологической последовательности (количество либо дефолтное либо в зависимости от флага при команде статуса)
+	printer.Printf("\n")
+	for _, log := range slave.logs {
+		printer.Printf("%s\n", log)
+	}
 }
 
 func (slave *Unit) stringStatusCode() string {
@@ -146,4 +151,5 @@ func (slave *Unit) handleResponse(result dto.CommandResult) {
 	slave.lastError = result.Error
 	slave.exitCode = result.ExitCode // Системный код завершения программы
 	slave.lastChangeTime = result.ChangeTime
+	slave.logs = result.Logs
 }

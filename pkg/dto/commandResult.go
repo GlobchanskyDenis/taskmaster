@@ -12,4 +12,5 @@ type CommandResult struct {
 	Error      error
 	ExitCode   int
 	ChangeTime time.Time
+	Logs       []string
 }

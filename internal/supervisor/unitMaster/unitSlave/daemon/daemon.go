@@ -4,11 +4,13 @@ import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/utils/process"
+	"bufio"
 	"context"
 	"time"
 	"sync"
 	"fmt"
 	"os/exec"
+	"io"
 )
 
 type daemon struct {
@@ -26,6 +28,9 @@ type processAsync struct {
 	lastError      error
 	exitCode       int
 	lastChangeTime time.Time
+	stdout         io.ReadCloser
+	stderr         io.ReadCloser
+	logs           []string
 
 	restartedTimes uint
 	
@@ -61,17 +66,26 @@ func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dt
 }
 
 func (d *daemon) newProcess() error {
-	cmd, err := process.New(d.BinPath + d.Name, d.BinPath, d.Args, d.Env)
+	cmd, stdout, stderr, err := process.New(d.BinPath + d.Name, d.BinPath, d.Args, d.Env)
 	if err != nil {
 		return err
 	}
+
+	/*	Сохраняем горутино безопасно  */
 	d.mu.Lock()
 	d.cmd = cmd
 	d.pid = cmd.Process.Pid
 	d.statusCode = constants.STATUS_ACTIVE
 	d.status = "Процесс успешно стартовал"
 	d.lastChangeTime = time.Now()
+	d.stdout = stdout
+	d.stderr = stderr
+	d.logs = nil
 	d.mu.Unlock()
+
+	go d.listenStdout()
+	go d.listenStderr()
+
 	return nil
 }
 
@@ -98,7 +112,6 @@ func (d *daemon) handleAutorestart() {
 		if d.isExitCodePermittedForRestart() == false {
 			return
 		}
-		println("Авторестартую")
 		/*	Принудительно стартую. Если ошибка - пофиг, значит плюс еще одна итерация к авторестарту  */
 		_ = d.newProcess()
 	}
@@ -130,8 +143,49 @@ func (d *daemon) listen() {
 	}
 }
 
+func (d *daemon) listenStdout() {
+	scanner := bufio.NewScanner(d.stdout)
+	/*	Выход из цикла только при получении EOF (которое получаем при завершении процесса)  */
+	for scanner.Scan() {
+		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
+		**	сохранение логов в самой горутине для команды status)  */
+		newLogLine := scanner.Bytes()
+		d.addLog(string(newLogLine))
+		// TODO добавить логгер
+
+		fmt.Printf("==%s==\n", newLogLine)
+	}
+	if err := scanner.Err(); err != nil {
+		d.handleError(err)
+	}
+}
+
+func (d *daemon) listenStderr() {
+	scanner := bufio.NewScanner(d.stderr)
+	/*	Выход из цикла только при получении EOF (которое получаем при завершении процесса)  */
+	for scanner.Scan() {
+		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
+		**	сохранение логов в самой горутине для команды status)  */
+		newLogLine := scanner.Bytes()
+		d.addLog(string(newLogLine))
+		// TODO добавить логгер
+
+		fmt.Printf("==%s==\n", newLogLine)
+	}
+	if err := scanner.Err(); err != nil {
+		d.handleError(err)
+	}
+}
+
+func (d *daemon) addLog(line string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.logs = append(d.logs, time.Now().Format("2006-01-02 15:04:05") + " " + line)
+}
+
 /*	Все данные подготовлены ДО данного обращения  */
-func (d *daemon) sendStatusResult() {
+func (d *daemon) sendStatusResult(amountLogs uint) {
+	logs := d.getLogsMu(amountLogs)
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.sender <- dto.CommandResult{
@@ -142,7 +196,21 @@ func (d *daemon) sendStatusResult() {
 		Error: d.lastError,
 		ExitCode: d.exitCode,
 		ChangeTime: d.lastChangeTime,
+		Logs: logs,
 	}
+}
+
+func (d *daemon) getLogsMu(amountLogs uint) []string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if len(d.logs) == 0 {
+		return []string{}
+	}
+	if len(d.logs) <= int(amountLogs) {
+		return d.logs
+	}
+	return d.logs[len(d.logs) - int(amountLogs) - 1:]
 }
 
 func (d *daemon) handleError(err error) {
