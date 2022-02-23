@@ -210,7 +210,7 @@ func (d *daemon) getLogsMu(amountLogs uint) []string {
 	if len(d.logs) <= int(amountLogs) {
 		return d.logs
 	}
-	return d.logs[len(d.logs) - int(amountLogs) - 1:]
+	return d.logs[len(d.logs) - int(amountLogs):]
 }
 
 func (d *daemon) handleError(err error) {

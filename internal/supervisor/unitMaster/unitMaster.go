@@ -23,10 +23,10 @@ func New(parentCtx context.Context, conf *dto.UnitConfig) *Unit {
 	return master
 }
 
-func (master *Unit) GetStatusAsync(wg *sync.WaitGroup) {
+func (master *Unit) GetStatusAsync(wg *sync.WaitGroup, amountLogs uint) {
 	for _, slave := range master.replicas {
 		wg.Add(1)
-		go slave.GetStatusAsync(wg)
+		go slave.GetStatusAsync(wg, amountLogs)
 	}
 	wg.Done()
 }

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 	"sync"
-	// "fmt"
 )
 
 type Unit struct {
@@ -47,11 +46,11 @@ func New(parentCtx context.Context, conf *dto.UnitConfig) *Unit {
 	return slave
 }
 
-func (slave *Unit) GetStatusAsync(wg *sync.WaitGroup) {
+func (slave *Unit) GetStatusAsync(wg *sync.WaitGroup, amountLogs uint) {
 	// fmt.Println("unitSlave status send " + slave.name)
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_STATUS,
-		AmountLogs: 10, // TODO - сделать зависимость от флагов команды
+		AmountLogs: amountLogs, // TODO - сделать зависимость от флагов команды
 	}
 	result := <- slave.receiver
 	// fmt.Println("unitSlave status received " + slave.name)

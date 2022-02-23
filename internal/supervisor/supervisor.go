@@ -11,7 +11,7 @@ import (
 type Supervisor interface {
 	StartByConfig(confList dto.UnitListConfig) error
 	StatusAll(dto.IPrinter)
-	Status(string, dto.IPrinter) error
+	Status(string, dto.IPrinter, uint) error
 	Stop(string, dto.IPrinter) error
 	Start(string, dto.IPrinter) error
 	Restart(string, dto.IPrinter) error
@@ -50,7 +50,7 @@ func (s *supervisor) StartByConfig(confList dto.UnitListConfig) error {
 	/*	Получаем статусы процессов чтобы сразу знать их pid  */
 	for _, master := range s.unitList {
 		s.wg.Add(1)
-		go master.GetStatusAsync(s.wg)
+		go master.GetStatusAsync(s.wg, 0)
 	}
 	s.wg.Wait()
 	return nil
@@ -59,7 +59,7 @@ func (s *supervisor) StartByConfig(confList dto.UnitListConfig) error {
 func (s *supervisor) StatusAll(printer dto.IPrinter) {
 	for _, master := range s.unitList {
 		s.wg.Add(1)
-		go master.GetStatusAsync(s.wg)
+		go master.GetStatusAsync(s.wg, 0)
 	}
 	s.wg.Wait()
 
@@ -68,14 +68,14 @@ func (s *supervisor) StatusAll(printer dto.IPrinter) {
 	}
 }
 
-func (s *supervisor) Status(processName string, printer dto.IPrinter) error {
+func (s *supervisor) Status(processName string, printer dto.IPrinter, amountLogs uint) error {
 	master, err := s.findMasterByProcessName(processName)
 	if err != nil {
 		return err
 	}
 
 	s.wg.Add(1)
-	go master.GetStatusAsync(s.wg)
+	go master.GetStatusAsync(s.wg, amountLogs)
 	s.wg.Wait()
 
 	master.PrintFullStatus(printer)

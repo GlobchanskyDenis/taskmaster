@@ -13,7 +13,7 @@ func debugSimple(newSupervisor supervisor.Supervisor) {
 	time.Sleep(time.Second * 1)
 
 	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 
@@ -27,7 +27,7 @@ func debugSimple(newSupervisor supervisor.Supervisor) {
 	time.Sleep(time.Second * 1)
 
 	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 
@@ -41,21 +41,21 @@ func debugSimple(newSupervisor supervisor.Supervisor) {
 	time.Sleep(time.Second * 1)
 
 	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 
 	time.Sleep(time.Second * 1)
 
 	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 
 	time.Sleep(time.Second * 1)
 
 	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 
@@ -66,14 +66,14 @@ func debugSimple(newSupervisor supervisor.Supervisor) {
 
 func debugAutorestart(newSupervisor supervisor.Supervisor) {
 	println("status")
-	if err := newSupervisor.Status("sample_autorestart_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_autorestart_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 
 	time.Sleep(time.Second * 10)
 
 	println("status")
-	if err := newSupervisor.Status("sample_autorestart_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_autorestart_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 }
@@ -82,14 +82,14 @@ func debugLogs(newSupervisor supervisor.Supervisor) {
 	time.Sleep(time.Second * 4)
 
 	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}, 10); err != nil {
 		println(err.Error())
 	}
 
 	time.Sleep(time.Second * 10)
 
 	println("status")
-	if err := newSupervisor.Status("sample_simple_bin", Printer{}); err != nil {
+	if err := newSupervisor.Status("sample_simple_bin", Printer{}, 0); err != nil {
 		println(err.Error())
 	}
 }
