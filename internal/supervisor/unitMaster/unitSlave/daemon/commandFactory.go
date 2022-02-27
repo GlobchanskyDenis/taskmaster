@@ -87,7 +87,7 @@ func (d *daemon) startProcess() error {
 	if d.isActive() == true {
 		return nil
 	}
-	if d.isDead() == false {
+	if d.isDead() == false && d.isNotStarted() == false {
 		/*	Сначала надо добить старый процесс  */
 		if err := d.killProcess(); err != nil {
 			return err
@@ -95,6 +95,13 @@ func (d *daemon) startProcess() error {
 		if err := d.newProcess(); err != nil {
 			return err
 		}
+		return nil
+	}
+	if d.isNotStarted() == true {
+		if err := d.newProcess(); err != nil {
+			return err
+		}
+		return nil
 	}
 	return nil
 }

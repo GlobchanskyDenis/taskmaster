@@ -6,6 +6,7 @@ import (
 	"syscall"
 	"strconv"
 	"errors"
+	"fmt"
 )
 
 type UnitConfig struct {
@@ -20,7 +21,7 @@ type UnitConfig struct {
 	Restartretries  uint     `conf:"Restartretries"` // Количество попыток запуска программы
 	Signal          string   `conf:"Signal"`         // Каким сигналом останавливать процесс. Это поле нужно парсить. Есть три варианта сигнала останова SIGTERM, SIGINT, SIGQUIT
 	Exitcodes       []int    `conf:"Exitcodes"`      // Список кодов завершения программы, после которых можно делать рестарт программы
-	Umask           string   `conf:"Umask"`          // ???
+	Umask           int      `conf:"Umask"`          // Маска прав доступа 0 - нет доп ограничений 7 - запретить все права
 	Workingdir      *string	 `conf:"Workingdir"`     // установка каталога для процесса (относится к chroot)
 
 	ProcessName     string         `conf:"-"`
@@ -32,20 +33,44 @@ type UnitConfig struct {
 }
 
 func (u UnitConfig) Validate() error {
-	if u.AutoRestart != constants.AUTORESTART_ALWAYS && u.AutoRestart != constants.AUTORESTART_NEVER && u.AutoRestart != constants.AUTORESTART_LIMITED_TIMES {
+	if u.AutoRestart != constants.AUTORESTART_ALWAYS && u.AutoRestart != constants.AUTORESTART_NEVER && u.AutoRestart != constants.AUTORESTART_LIMITED_TIMES && u.AutoRestart != constants.AUTORESTART_UNEXPECTED_EXITS {
 		return errors.New("В конфигурации в пункте AutoRestart присвоено недопустимое значение (" + u.AutoRestart + "). Допустимые значения: " + 
-		constants.AUTORESTART_ALWAYS + ", " + constants.AUTORESTART_NEVER + ", " + constants.AUTORESTART_LIMITED_TIMES)
+		constants.AUTORESTART_ALWAYS + ", " + constants.AUTORESTART_NEVER + ", " + constants.AUTORESTART_LIMITED_TIMES + ", " + constants.AUTORESTART_UNEXPECTED_EXITS)
 	}
 	if u.Signal != constants.SIGNAL_SIGTERM && u.Signal != constants.SIGNAL_SIGINT && u.Signal != constants.SIGNAL_SIGQUIT {
 		return errors.New("В конфигурации в пункте Signal присвоено недопустимое значение (" + u.Signal + "). Допустимые значения: " + 
 		constants.SIGNAL_SIGTERM  + ", " + constants.SIGNAL_SIGINT + ", " + constants.SIGNAL_SIGQUIT)
 	}
-	if u.AutoRestart == constants.AUTORESTART_LIMITED_TIMES && u.Restartretries == 0 {
-		return errors.New("В конфигурации в пунктах AutoRestart, Restartretries присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Restartretries=0).")
+
+	if u.AutoRestart == constants.AUTORESTART_ALWAYS && u.Restartretries != 0 {
+		return errors.New("В конфигурации в пунктах AutoRestart, Restartretries присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Restartretries=" +
+			strconv.FormatUint(uint64(u.Restartretries), 10) + "). Restartretries должен быть нулем если вы хотите перманентный авторестарт")
+	}
+	if u.AutoRestart == constants.AUTORESTART_ALWAYS && len(u.Exitcodes) != 0 {
+		return errors.New("В конфигурации в пунктах AutoRestart, Exitcodes присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Exitcodes=" +
+		fmt.Sprintf("%#v", u.Exitcodes) + "). Exitcodes не должны указываться, т.к авторестарт будет в любом случае")
 	}
 	if u.AutoRestart == constants.AUTORESTART_NEVER && u.Restartretries != 0 {
 		return errors.New("В конфигурации в пунктах AutoRestart, Restartretries присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Restartretries=" +
 			strconv.FormatUint(uint64(u.Restartretries), 10) + "). Restartretries должен быть нулем если вы не хотите авторестарта")
+	}
+	if u.AutoRestart == constants.AUTORESTART_NEVER && len(u.Exitcodes) != 0 {
+		return errors.New("В конфигурации в пунктах AutoRestart, Exitcodes присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Exitcodes=" +
+		fmt.Sprintf("%#v", u.Exitcodes) + "). Exitcodes не должны указываться, т.к авторестарта не будет")
+	}
+	if u.AutoRestart == constants.AUTORESTART_LIMITED_TIMES && u.Restartretries == 0 {
+		return errors.New("В конфигурации в пунктах AutoRestart, Restartretries присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Restartretries=0).")
+	}
+	if u.AutoRestart == constants.AUTORESTART_LIMITED_TIMES && len(u.Exitcodes) != 0 {
+		return errors.New("В конфигурации в пунктах AutoRestart, Exitcodes присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Exitcodes=" +
+		fmt.Sprintf("%#v", u.Exitcodes) + "). Exitcodes не должны указываться, т.к данный вариант авторестарта предполагает рестарт вне зависимости от кодов завершения процесса")
+	}
+	if u.AutoRestart == constants.AUTORESTART_UNEXPECTED_EXITS && u.Restartretries != 0 {
+		return errors.New("В конфигурации в пунктах AutoRestart, Restartretries присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Restartretries=" +
+			strconv.FormatUint(uint64(u.Restartretries), 10) + "). Restartretries должен быть нулем если вы не хотите авторестарта")
+	}
+	if u.AutoRestart == constants.AUTORESTART_UNEXPECTED_EXITS && len(u.Exitcodes) == 0 {
+		return errors.New("В конфигурации в пунктах AutoRestart, Exitcodes присвоено недопустимое сочетание значений (" + u.AutoRestart + " + Exitcodes=[]). Exitcodes должны указываться")
 	}
 	if u.Replicas == 0 {
 		return errors.New("В конфигурации в пункте Replicas присвоено недопустимое значение (0). Минимум 1")
@@ -87,6 +112,9 @@ func (u *UnitConfig) parseAutorestart() {
 		u.RestartTimes = &u.Restartretries
 	case constants.AUTORESTART_NEVER:
 		u.autorestart = false
+		u.RestartTimes = nil
+	case constants.AUTORESTART_UNEXPECTED_EXITS:
+		u.autorestart = true
 		u.RestartTimes = nil
 	}
 }
@@ -140,5 +168,6 @@ func (u UnitConfig) GetProcessMeta() ProcessMeta {
 		Exitcodes: u.Exitcodes,
 		Starttime: u.Starttime,
 		Stoptime: u.Stoptime,
+		Umask: u.Umask,
 	}
 }

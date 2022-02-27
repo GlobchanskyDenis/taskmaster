@@ -47,7 +47,7 @@ func main() {
 	}
 
 	/*	Это просто эмуляция команд. Только на время отладки  */
-	debugSimple(newSupervisor)
+	debugStartWithDelay(newSupervisor) 
 
 	/*	Механизм gracefull shutdown реализуется тут  */
 	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())

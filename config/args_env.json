@@ -1,0 +1,28 @@
+{
+	"Logger": {
+		"DaemonName": "taskmaster",
+		"LogFolder": "./logs/",
+		"Permissions": "777"
+	},
+	"Units": [
+		{
+			"Cmd": "./sample_args_env_bin",
+			"Args": [
+				"-X=Y"
+			],
+			"Env": [
+				"TEMP_ENV=DENIS"
+			],
+			"Replicas": 1,
+			"Autostart": false,
+			"Autorestart": "Unexpected exits",
+			"Starttime": 0,
+			"Stoptime": 1,
+			"Restartretries": 0,
+			"Signal": "SIGQUIT",
+			"Exitcodes": [1, 100],
+			"Umask": 16,
+			"Workingdir": "./test/"
+		}
+	]
+}

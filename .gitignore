@@ -1,5 +1,6 @@
 socket_bin
 sample_simple_bin
 sample_autorestart_bin
+sample_args_env_bin
 logs/
 test/

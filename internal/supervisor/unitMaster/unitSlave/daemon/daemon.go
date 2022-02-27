@@ -10,7 +10,9 @@ import (
 	"sync"
 	"fmt"
 	"os/exec"
+	"syscall"
 	"io"
+	"errors"
 )
 
 type daemon struct {
@@ -29,6 +31,7 @@ type processAsync struct {
 	lastError      error
 	exitCode       int
 	lastChangeTime time.Time
+	startTime      time.Time
 	stdout         io.ReadCloser
 	stderr         io.ReadCloser
 	logs           []string
@@ -47,7 +50,7 @@ func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.Com
 		logger: logger,
 		ProcessMeta: meta,
 		processAsync: processAsync{
-			statusCode: constants.STATUS_DEAD,
+			statusCode: constants.STATUS_NOT_STARTED,
 			status: "Процесс пока не был запущен",
 			mu: &sync.Mutex{},
 		},
@@ -56,18 +59,30 @@ func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.Com
 
 func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta, logger dto.ILogger) {
 	d := new(ctx, receiver, sender, meta, logger)
-	if err := d.newProcess(); err != nil {
-		println("ERROR!!!")
-		println(err.Error())
-		d.handleError(err)
-	} else {
-		/*	Блокирующая команда. Заканчивается только по сигналу останова (gracefull shutdown через контекст)  */
-		go d.listen()
+	if meta.Autostart == true {
+		if err := d.newProcess(); err != nil {
+			println("ERROR!!!")
+			println(err.Error())
+			d.handleError(err)
+		}
 	}
+
+	/*	Блокирующая команда. Заканчивается только по сигналу останова (gracefull shutdown через контекст)  */
+	go d.listen()
 }
 
 func (d *daemon) newProcess() error {
-	cmd, stdout, stderr, err := process.New(d.BinPath + d.Name, d.BinPath, d.Args, d.Env)
+	/*	processPath -- либо текущая папка либо (если задано) из конфигурационника  */
+	var processPath string = "./"
+	if d.ProcessPath != nil {
+		processPath = *d.ProcessPath
+	}
+
+	/*	Логика с Umask  */
+	syscall.Umask(d.Umask)
+
+	/*	Создаем процесс  */
+	cmd, stdout, stderr, err := process.New(d.BinPath + d.Name, processPath, d.Args, d.Env)
 	if err != nil {
 		return err
 	}
@@ -79,6 +94,7 @@ func (d *daemon) newProcess() error {
 	d.statusCode = constants.STATUS_ACTIVE
 	d.status = "Процесс успешно стартовал"
 	d.lastChangeTime = time.Now()
+	d.startTime = time.Now()
 	d.stdout = stdout
 	d.stderr = stderr
 	d.logs = nil
@@ -117,27 +133,42 @@ func (d *daemon) handleAutorestart() {
 	for {
 		/*	Функция прервется когда процесс завершится (по любой причине)  */
 		d.handleProcessInterrupt()
-		/*	В случае если процесс был остановлен вручную - авторестарт делать не нужно  */
-		if d.isStopped() == true {
+
+		/*	Проверяю разрешен ли рестарт  */
+		if d.isRestartPermitted() == false {
 			return
 		}
-		/*	В случае если авторестарт выключен в конфигурационнике -- аналогично  */
-		if d.Autorestart == false {
-			return
-		}
-		/*	Если превысил максимальное количество рестартов  */
-		if d.RestartTimes != nil && *d.RestartTimes <= d.restartedTimes {
-			return
-		} else {
-			d.restartedTimes++
-		}
-		/*	Если код завершения не занесен в конфигурационник как разрешенный для авторестарта - авторестарт не состоится  */
-		if d.isExitCodePermittedForRestart() == false {
-			return
-		}
+
 		/*	Принудительно стартую. Если ошибка - пофиг, значит плюс еще одна итерация к авторестарту  */
 		_ = d.newProcess()
 	}
+}
+
+/*	Функция отвечает на вопрос - делать ли рестарт или нет  */
+func (d *daemon) isRestartPermitted() bool {
+	/*	В случае если процесс был остановлен вручную - авторестарт делать не нужно  */
+	if d.isStopped() == true {
+		return false
+	}
+	/*	В случае если авторестарт выключен в конфигурационнике -- аналогично  */
+	if d.Autorestart == false {
+		return false
+	}
+	if d.IsRestartByRestartTimes() == true {
+		/*	Если превысил максимальное количество рестартов  */
+		if d.RestartTimes != nil && *d.RestartTimes <= d.restartedTimes {
+			return false
+		} else {
+			d.restartedTimes++
+		}
+	}
+	if d.IsRestartByExitCodeCheck() == true {
+		/*	Если код завершения не занесен в конфигурационник как разрешенный для авторестарта - авторестарт не состоится  */
+		if d.isExitCodePermittedForRestart() == false {
+			return false
+		}
+	}
+	return true
 }
 
 /*	Авторестарт разрешен только если код завершения процесса (хрунится внутри) разрешен в конфигурационнике  */
@@ -255,16 +286,21 @@ func (d *daemon) handleProcessInterrupt() {
 			d.handleError(err)
 		} else {
 			fmt.Printf("\tPid %d \tExited? %#v \tExitCode %d \tString %s\n", exitState.Pid(), exitState.Exited(), exitState.ExitCode(), exitState.String())
-			d.mu.Lock()
-			if d.statusCode != constants.STATUS_STOPPED {
-				d.statusCode = constants.STATUS_DEAD
-				d.status = "Процесс убит извне " + exitState.String()
-				d.lastChangeTime = time.Now()
+			/*	Проверяем логику из конфигурационника -- отработал ли процесс минимально положенное время  */
+			if uint(time.Now().Sub(d.startTime).Seconds()) < d.Starttime {
+				d.handleError(errors.New("Процесс завершился раньше ожидаемого времени"))
+			} else {
+				d.mu.Lock()
+				if d.statusCode != constants.STATUS_STOPPED {
+					d.statusCode = constants.STATUS_DEAD
+					d.status = "Процесс убит извне " + exitState.String()
+					d.lastChangeTime = time.Now()
+				}
+				d.exitCode = exitState.ExitCode()
+				d.mu.Unlock()
+				/*	Логгирую в файл  */
+				d.logWarning(nil, "Процесс остановился " + exitState.String())
 			}
-			d.exitCode = exitState.ExitCode()
-			d.mu.Unlock()
-			/*	Логгирую в файл  */
-			d.logWarning(nil, "Процесс остановился " + exitState.String())
 		}
 	} else {
 		fmt.Printf("Не могу отслеживать прерывание процесса так как он не создан (равен nil)")
@@ -293,6 +329,15 @@ func (d *daemon) isStopped() bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.cmd != nil && d.statusCode == constants.STATUS_STOPPED {
+		return true
+	}
+	return false
+}
+
+func (d *daemon) isNotStarted() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.statusCode == constants.STATUS_NOT_STARTED {
 		return true
 	}
 	return false

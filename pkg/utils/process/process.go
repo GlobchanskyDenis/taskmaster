@@ -8,8 +8,9 @@ import (
 )
 
 func New(processName, processDir string, args, env []string) (*exec.Cmd, io.ReadCloser, io.ReadCloser, error) {
-	cmd := exec.Command(processName, args...)
+	cmd := exec.Command(processName)
 	cmd.Dir = processDir
+	cmd.Args = append([]string{processName}, args...)
 	cmd.Env = env
 	/*	Для перехвата стандартных потоков вывода и ошибок  */
 	stdOut, err := cmd.StdoutPipe()

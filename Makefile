@@ -13,8 +13,13 @@ SAMPLE_AUTORESTART_DIR			=	cmd/sample_autorestart
 SAMPLE_AUTORESTART_FILES		=	main.go
 SAMPLE_AUTORESTART_FILENAMES	=	$(addprefix $(SAMPLE_AUTORESTART_DIR)/,$(SAMPLE_AUTORESTART_FILES))
 
+SAMPLE_ARGS_ENV_BIN				=	sample_args_env_bin
+SAMPLE_ARGS_ENV_DIR				=	cmd/sample_args_env
+SAMPLE_ARGS_ENV_FILES			=	main.go		flags.go		env.go	umask_dir.go
+SAMPLE_ARGS_ENV_FILENAMES		=	$(addprefix $(SAMPLE_ARGS_ENV_DIR)/,$(SAMPLE_ARGS_ENV_FILES))
 
-all : $(SOCKET_BIN) $(SAMPLE_SIMPLE_BIN) $(SAMPLE_AUTORESTART_BIN)
+
+all : $(SOCKET_BIN) $(SAMPLE_SIMPLE_BIN) $(SAMPLE_AUTORESTART_BIN) $(SAMPLE_ARGS_ENV_BIN)
 
 $(SOCKET_BIN) : $(SOCKET_FILENAMES)
 	@echo "компилирую бинарник супервизора"
@@ -28,9 +33,14 @@ $(SAMPLE_AUTORESTART_BIN) : $(SAMPLE_AUTORESTART_FILENAMES)
 	@echo "компилирую бинарник примера 2 (авторестарт)"
 	@go build -o $(SAMPLE_AUTORESTART_BIN) $(SAMPLE_AUTORESTART_FILENAMES)
 
+$(SAMPLE_ARGS_ENV_BIN) : $(SAMPLE_ARGS_ENV_FILENAMES)
+	@echo "компилирую бинарник примера 3 (флаги, переменные окружения)"
+	@go build -o $(SAMPLE_ARGS_ENV_BIN) $(SAMPLE_ARGS_ENV_FILENAMES)
+
 fclean:
 	rm -rf $(SOCKET_BIN)
 	rm -rf $(SAMPLE_SIMPLE_BIN)
 	rm -rf $(SAMPLE_AUTORESTART_BIN)
+	rm -rf $(SAMPLE_ARGS_ENV_BIN)
 
 re: fclean all

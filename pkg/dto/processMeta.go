@@ -17,4 +17,19 @@ type ProcessMeta struct {
 	Exitcodes    []int
 	Starttime    uint
 	Stoptime     uint
+	Umask        int
+}
+
+func (pm ProcessMeta) IsRestartByRestartTimes() bool {
+	if pm.Autorestart == true && pm.RestartTimes != nil {
+		return true
+	}
+	return false
+}
+
+func (pm ProcessMeta) IsRestartByExitCodeCheck() bool {
+	if pm.Autorestart == true && len(pm.Exitcodes) > 0 {
+		return true
+	}
+	return false
 }

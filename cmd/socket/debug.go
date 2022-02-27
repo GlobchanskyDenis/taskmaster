@@ -109,3 +109,12 @@ func debugStopStart(newSupervisor supervisor.Supervisor) {
 		}
 	}
 }
+
+func debugStartWithDelay(newSupervisor supervisor.Supervisor) {
+
+	time.Sleep(time.Second * 2)
+	println("\n---- START ----\n")
+	if err := newSupervisor.Start("sample_args_env_bin", Printer{}); err != nil {
+		println(err.Error())
+	}
+}
