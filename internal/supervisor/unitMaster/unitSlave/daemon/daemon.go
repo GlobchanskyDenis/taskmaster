@@ -67,7 +67,6 @@ func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dt
 		}
 	}
 
-	/*	Блокирующая команда. Заканчивается только по сигналу останова (gracefull shutdown через контекст)  */
 	go d.listen()
 }
 
