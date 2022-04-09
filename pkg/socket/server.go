@@ -11,9 +11,9 @@ import (
 type Server interface {
 	Close() error
 	DialSocket() error
-	Listen() (string, error)
-	ListenWithoutAnswer() (string, error)
-	Answer(response string) error
+	Listen() ([]byte, error)
+	ListenWithoutAnswer() ([]byte, error)
+	Answer(response []byte) error
 }
 
 type server struct {
@@ -59,25 +59,25 @@ func (entity *server) DialSocket() error {
 	return nil
 }
 
-func (entity *server) Listen() (string, error) {
+func (entity *server) Listen() ([]byte, error) {
 	uconn, err := entity.listener.AcceptUnix()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	entity.messageConnection = uconn
 
 	requestMessageByte, err := entity.parseRequest()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(requestMessageByte), nil
+	return requestMessageByte, nil
 }
 
-func (entity *server) ListenWithoutAnswer() (string, error) {
+func (entity *server) ListenWithoutAnswer() ([]byte, error) {
 	uconn, err := entity.listener.AcceptUnix()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	entity.messageConnection = uconn
 
@@ -92,10 +92,10 @@ func (entity *server) ListenWithoutAnswer() (string, error) {
 
 	requestMessageByte, err := entity.parseRequest()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(requestMessageByte), nil
+	return requestMessageByte, nil
 }
 
 func (entity *server) parseRequest() ([]byte, error) {
@@ -120,8 +120,7 @@ func (entity *server) parseRequest() ([]byte, error) {
 	return reqBytes, nil
 }
 
-func (entity *server) Answer(response string) error {
-	var data = []byte(response)
+func (entity *server) Answer(data []byte) error {
 	defer func(entity *server) {
 		if entity.messageConnection != nil {
 			if err := entity.messageConnection.Close(); err != nil {

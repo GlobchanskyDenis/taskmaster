@@ -11,8 +11,8 @@ type Conn interface{
 	Close() error
 	ReaderStartAsync(context.Context, dto.IPrinter) error
 	ReaderStartSync() error
-	Read() (string, error)
-	Write(string) error
+	Read() ([]byte, error)
+	Write([]byte) error
 }
 
 type connection struct {
@@ -36,7 +36,7 @@ func (conn *connection) ReaderStartAsync(ctx context.Context, printer dto.IPrint
 	}
 
 	/*	Далее сервер будет работать в асинхроне и сам писать в терминал  */
-	var serverReadChan = make(chan string)
+	var serverReadChan = make(chan []byte)
 	go conn.readServerLoop(serverReadChan)
 	go conn.listen(ctx, printer, serverReadChan)
 
@@ -51,7 +51,7 @@ func (conn *connection) ReaderStartSync() error {
 	return nil
 }
 
-func (conn *connection) readServerLoop(resultChan chan<- string) {
+func (conn *connection) readServerLoop(resultChan chan<- []byte) {
 	for {
 		result, err := conn.server.ListenWithoutAnswer()
 		if err != nil {
@@ -63,7 +63,7 @@ func (conn *connection) readServerLoop(resultChan chan<- string) {
 	}
 }
 
-func (conn *connection) listen(ctx context.Context, printer dto.IPrinter, resultChan <-chan string) {
+func (conn *connection) listen(ctx context.Context, printer dto.IPrinter, resultChan <-chan []byte) {
 	for {
 		select {
 		case <- ctx.Done():
@@ -81,10 +81,10 @@ func (conn *connection) listen(ctx context.Context, printer dto.IPrinter, result
 	}
 }
 
-func (conn *connection) Read() (string, error) {
+func (conn *connection) Read() ([]byte, error) {
 	result, err := conn.server.ListenWithoutAnswer()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return result, nil
 }
@@ -96,7 +96,7 @@ func (conn *connection) Close() error {
 	return nil
 }
 
-func (conn *connection) Write(payload string) error {
+func (conn *connection) Write(payload []byte) error {
 	client := NewClient(conn.clientSocketFilePath)
 
 	defer func(client Client) {

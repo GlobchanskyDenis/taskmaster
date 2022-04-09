@@ -39,8 +39,8 @@ func server() {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Client said '%s'\n", line)
-		if err := conn.Answer("hi, i'm server, this is my answer"); err != nil {
+		fmt.Printf("Client said '%s'\n", string(line))
+		if err := conn.Answer([]byte("hi, i'm server, this is my answer")); err != nil {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
 		}
@@ -67,7 +67,7 @@ func connectionAsync() {
 
 	for {
 		fmt.Printf("sending hi\n")
-		if err := conn.Write("hi from other socket connection"); err != nil {
+		if err := conn.Write([]byte("hi from other socket connection")); err != nil {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
 		}

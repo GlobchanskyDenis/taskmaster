@@ -11,8 +11,8 @@ type Client interface {
 	Close() error
 	DialSocket() error
 	DialServer() error
-	TransmitReceive(string) (string, error)
-	Transmit(string) error
+	TransmitReceive([]byte) ([]byte, error)
+	Transmit([]byte) error
 }
 
 type client struct {
@@ -58,42 +58,40 @@ func (entity *client) DialServer() error {
 	return nil
 }
 
-func (entity *client) TransmitReceive(requestMessage string) (string, error) {
+func (entity *client) TransmitReceive(data []byte) ([]byte, error) {
 
 	/*	preparing data  */
 	buf := new(bytes.Buffer)
-	data := []byte(requestMessage)
 	msglen := uint32(len(data))
 	binary.Write(buf, binary.BigEndian, &msglen)
 	data = append(buf.Bytes(), data...)
 
 	/*	write request data  */
 	if _, err := entity.uconn.Write(data); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	/*	receiving response data  */
 	var reqLen uint32
 	lenBytes := make([]byte, 4)
 	if _, err := io.ReadFull(entity.uconn, lenBytes); err != nil {
-		return "", err
+		return nil, err
 	}
 	lenBuf := bytes.NewBuffer(lenBytes)
 	if err := binary.Read(lenBuf, binary.BigEndian, &reqLen); err != nil {
-		return "", err
+		return nil, err
 	}
 	reqBytes := make([]byte, reqLen)
 	if _, err := io.ReadFull(entity.uconn, reqBytes); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(reqBytes), nil
+	return reqBytes, nil
 }
 
-func (entity *client) Transmit(requestMessage string) error {
+func (entity *client) Transmit(data []byte) error {
 	/*	preparing data  */
 	buf := new(bytes.Buffer)
-	data := []byte(requestMessage)
 	msglen := uint32(len(data))
 	binary.Write(buf, binary.BigEndian, &msglen)
 	data = append(buf.Bytes(), data...)

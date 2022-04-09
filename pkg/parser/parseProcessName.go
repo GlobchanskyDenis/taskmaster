@@ -2,8 +2,8 @@ package parser
 
 import (
 	"path/filepath"
-	"errors"
 	"strings"
+	"errors"
 )
 
 func ParseProcessName(rawName string) (name string, path string, args []string, err error) {

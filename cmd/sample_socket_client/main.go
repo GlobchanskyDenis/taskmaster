@@ -42,12 +42,12 @@ func client() {
 				break
 			}
 		}
-		line, err := conn.TransmitReceive("hi, im client, this is my request to server")
+		line, err := conn.TransmitReceive([]byte("hi, im client, this is my request to server"))
 		if err != nil {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("server responsed '%s'\n", line)
+		fmt.Printf("server responsed '%s'\n", string(line))
 		time.Sleep(time.Second * 3)
 	}
 }
@@ -73,7 +73,7 @@ func connectionAsync() {
 
 	for {
 		fmt.Printf("sending hi\n")
-		if err := conn.Write("hi from other socket connection\n"); err != nil {
+		if err := conn.Write([]byte("hi from other socket connection\n")); err != nil {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
 		}
@@ -101,12 +101,12 @@ func connection() {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
 		} else {
-			fmt.Printf("received: %s\n", message)
+			fmt.Printf("received: %s\n", string(message))
 		}
 		time.Sleep(time.Millisecond * 1500)
 
 		fmt.Printf("sending hi\n")
-		if err := conn.Write("hi from other socket connection"); err != nil {
+		if err := conn.Write([]byte("hi from other socket connection")); err != nil {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
 		}
