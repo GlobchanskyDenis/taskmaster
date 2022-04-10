@@ -28,10 +28,20 @@ SAMPLE_SOCKET_SERVER_DIR		=	cmd/sample_socket_server
 SAMPLE_SOCKET_SERVER_FILES		=	main.go
 SAMPLE_SOCKET_SERVER_FILENAMES	=	$(addprefix $(SAMPLE_SOCKET_SERVER_DIR)/,$(SAMPLE_SOCKET_SERVER_FILES))
 
-all : $(UNIT_BIN) $(SAMPLE_SIMPLE_BIN) $(SAMPLE_AUTORESTART_BIN) $(SAMPLE_ARGS_ENV_BIN) $(SAMPLE_SOCKET_CLIENT_BIN) $(SAMPLE_SOCKET_SERVER_BIN)
+CLIENT_BIN						=	client_bin
+CLIENT_DIR						=	cmd/client
+CLIENT_FILES					=	main.go
+CLIENT_FILENAMES				=	$(addprefix $(CLIENT_DIR)/,$(CLIENT_FILES))
+
+SERVER_BIN						=	server_bin
+SERVER_DIR						=	cmd/server
+SERVER_FILES					=	main.go		config.go		flags.go
+SERVER_FILENAMES				=	$(addprefix $(SERVER_DIR)/,$(SERVER_FILES))
+
+all : $(UNIT_BIN) $(SAMPLE_SIMPLE_BIN) $(SAMPLE_AUTORESTART_BIN) $(SAMPLE_ARGS_ENV_BIN) $(SAMPLE_SOCKET_CLIENT_BIN) $(SAMPLE_SOCKET_SERVER_BIN) $(CLIENT_BIN) $(SERVER_BIN)
 
 $(UNIT_BIN) : $(UNIT_FILENAMES)
-	@echo "компилирую бинарник супервизора"
+	@echo "компилирую бинарник супервизора (пример работы)"
 	@go build -o $(UNIT_BIN) $(UNIT_FILENAMES)
 
 $(SAMPLE_SIMPLE_BIN) : $(SAMPLE_SIMPLE_FILENAMES)
@@ -54,12 +64,23 @@ $(SAMPLE_SOCKET_SERVER_BIN) : $(SAMPLE_SOCKET_SERVER_FILENAMES)
 	@echo "компилирую бинарник примера 4.2 (сервер работы с сокетом)"
 	@go build -o $(SAMPLE_SOCKET_SERVER_BIN) $(SAMPLE_SOCKET_SERVER_FILENAMES)
 
+$(SERVER_BIN) : $(SERVER_FILENAMES)
+	@echo "компилирую бинарник сервера"
+	@go build -o $(SERVER_BIN) $(SERVER_FILENAMES)
+
+$(CLIENT_BIN) : $(CLIENT_FILENAMES)
+	@echo "компилирую бинарник клиента"
+	@go build -o $(CLIENT_BIN) $(CLIENT_FILENAMES)
+
 fclean:
-	rm -rf $(UNIT_BIN)
-	rm -rf $(SAMPLE_SIMPLE_BIN)
-	rm -rf $(SAMPLE_AUTORESTART_BIN)
-	rm -rf $(SAMPLE_ARGS_ENV_BIN)
-	rm -rf $(SAMPLE_SOCKET_CLIENT_BIN)
-	rm -rf $(SAMPLE_SOCKET_SERVER_BIN)
+	@echo "удаляю бинарники"
+	@rm -rf $(UNIT_BIN)
+	@rm -rf $(SAMPLE_SIMPLE_BIN)
+	@rm -rf $(SAMPLE_AUTORESTART_BIN)
+	@rm -rf $(SAMPLE_ARGS_ENV_BIN)
+	@rm -rf $(SAMPLE_SOCKET_CLIENT_BIN)
+	@rm -rf $(SAMPLE_SOCKET_SERVER_BIN)
+	@rm -rf $(CLIENT_BIN)
+	@rm -rf $(SERVER_BIN)
 
 re: fclean all

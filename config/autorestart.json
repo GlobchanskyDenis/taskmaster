@@ -17,7 +17,7 @@
 			"Restartretries": 3,
 			"Signal": "SIGQUIT",
 			"Exitcodes": [1, 100],
-			"Umask": "022",
+			"Umask": 22,
 			"Workingdir": null
 		}
 	]
