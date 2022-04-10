@@ -87,36 +87,36 @@ func (slave *Unit) RestartAsync(wg *sync.WaitGroup) {
 
 func (slave *Unit) PrintShortStatus(printer dto.IPrinter) {
 	if slave.statusCode == constants.STATUS_ACTIVE {
-		printer.Printf("[+] %5d %s\n", slave.pid, slave.name)
+		printer.Printf("%s[+] %5d %s%s\n", constants.GREEN, slave.pid, slave.name, constants.NO_COLOR)
 	} else {
-		printer.Printf("[-] %5d %s\n", slave.pid, slave.name)
+		printer.Printf("%s[-] %5d %s%s\n", constants.GREEN, slave.pid, slave.name, constants.NO_COLOR)
 	}
 }
 
 func (slave *Unit) PrintFullStatus(prefix string, printer dto.IPrinter) {
-	printer.Printf("%sprocess: %s\n", prefix, slave.name)
-	printer.Printf("%s     Path: binary (%s)", prefix, slave.binPath)
+	printer.Printf("%s%sprocess: %s%s\n", constants.GREEN, prefix, slave.name, constants.NO_COLOR)
+	printer.Printf("%s%s     Path: binary (%s)", constants.GREEN, prefix, slave.binPath)
 	if slave.procPath != nil {
-		printer.Printf(" process (%s)\n", *slave.procPath)
+		printer.Printf(" process (%s)%s\n", *slave.procPath, constants.NO_COLOR)
 	} else {
-		printer.Printf("\n")
+		printer.Printf("%s\n", constants.NO_COLOR)
 	}
-	printer.Printf("%s   Active: %s since %s\n", prefix, slave.stringStatusCode(), slave.stringChangeTime())
-	printer.Printf("%s      Pid: %d\n", prefix, int(slave.pid))
-	printer.Printf("%s   Status: %s\n", prefix, slave.status)
+	printer.Printf("%s%s   Active: %s%s%s since %s%s\n", constants.GREEN, prefix, constants.NO_COLOR, slave.stringStatusCode(), constants.GREEN, slave.stringChangeTime(), constants.NO_COLOR)
+	printer.Printf("%s%s      Pid: %d%s\n", constants.GREEN, prefix, int(slave.pid), constants.NO_COLOR)
+	printer.Printf("%s%s   Status: %s%s\n", constants.GREEN, prefix, slave.status, constants.NO_COLOR)
 	if slave.lastError != nil {
-		printer.Printf("%s    Error: %s%s%s\n", prefix, constants.RED, slave.lastError.Error(), constants.NO_COLOR)
+		printer.Printf("%s%s    Error: %s%s%s%s\n", constants.GREEN, prefix, constants.RED, slave.lastError.Error(), constants.NO_COLOR, constants.NO_COLOR)
 	}
 	printer.Printf("\n")
 	for _, log := range slave.logs {
-		printer.Printf("%s\n", log)
+		printer.Printf("%s%s%s\n", constants.GREEN, log, constants.NO_COLOR)
 	}
 }
 
 func (slave *Unit) stringStatusCode() string {
 	switch slave.statusCode {
 	case constants.STATUS_ACTIVE:
-		return constants.GREEN + "active (running)" + constants.NO_COLOR
+		return constants.GREEN_BG + "active (running)" + constants.NO_COLOR
 	case constants.STATUS_STOPPED:
 		return "inactive (stopped)"
 	case constants.STATUS_DEAD:

@@ -68,7 +68,7 @@ func (master *Unit) PrintShortStatus(printer dto.IPrinter) {
 			sign = "?"
 		}
 
-		printer.Printf("[%s] %s\n", sign, master.name)
+		printer.Printf("%s[%s] %s%s\n", constants.GREEN, sign, master.name, constants.NO_COLOR)
 		for _, slave := range master.replicas {
 			printer.Printf("    ")
 			slave.PrintShortStatus(printer)
@@ -80,7 +80,7 @@ func (master *Unit) PrintShortStatus(printer dto.IPrinter) {
 
 func (master *Unit) PrintFullStatus(printer dto.IPrinter) {
 	if len(master.replicas) > 1 {
-		printer.Printf("%s\n", master.name)
+		printer.Printf("%s%s%s\n", constants.GREEN, master.name, constants.NO_COLOR)
 		for num, slave := range master.replicas {
 			slave.PrintFullStatus("   ", printer)
 	

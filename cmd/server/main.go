@@ -56,7 +56,7 @@ func socketLoop(svisor supervisor.Supervisor) {
 
 		parsedCommand, err := cli_parser.ParseCliCommand(string(request))
 		if err != nil {
-			if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR)); err != nil {
+			if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 				fmt.Printf("Error: %s\n", err)
 				return
 			}
@@ -67,7 +67,7 @@ func socketLoop(svisor supervisor.Supervisor) {
 		case constants.COMMAND_STATUS:
 			if len(parsedCommand.Args) == 0 {
 				if err := svisor.Status(parsedCommand.UnitName, printer, 10); err != nil {
-					if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR)); err != nil {
+					if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 						fmt.Printf("Error: %s\n", err)
 						return
 					}
@@ -78,7 +78,7 @@ func socketLoop(svisor supervisor.Supervisor) {
 					svisor.StatusAll(printer)
 				case constants.ARGUMENT_STATUS_NUMBER:
 					if err := svisor.Status(parsedCommand.UnitName, printer, parsedCommand.Args[0].Value); err != nil {
-						if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR)); err != nil {
+						if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 							fmt.Printf("Error: %s\n", err)
 							return
 						}
@@ -87,21 +87,21 @@ func socketLoop(svisor supervisor.Supervisor) {
 			}
 		case constants.COMMAND_STOP:
 			if err := svisor.Stop(parsedCommand.UnitName, printer); err != nil {
-				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR)); err != nil {
+				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 					fmt.Printf("Error: %s\n", err)
 					return
 				}
 			}
 		case constants.COMMAND_START:
 			if err := svisor.Start(parsedCommand.UnitName, printer); err != nil {
-				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR)); err != nil {
+				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 					fmt.Printf("Error: %s\n", err)
 					return
 				}
 			}
 		case constants.COMMAND_RESTART:
 			if err := svisor.Restart(parsedCommand.UnitName, printer); err != nil {
-				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR)); err != nil {
+				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 					fmt.Printf("Error: %s\n", err)
 					return
 				}

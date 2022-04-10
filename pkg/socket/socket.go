@@ -72,7 +72,7 @@ func (conn *connection) listen(ctx context.Context, printer dto.IPrinter, result
 			return
 		case result, ok := <- resultChan:
 			if ok {
-				printer.Printf("%s\n", result)
+				printer.Printf("%s", result)
 			} else {
 				println("channel was closed")
 			}
