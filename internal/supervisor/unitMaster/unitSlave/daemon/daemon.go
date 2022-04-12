@@ -61,8 +61,6 @@ func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dt
 	d := new(ctx, receiver, sender, meta, logger)
 	if meta.Autostart == true {
 		if err := d.newProcess(); err != nil {
-			println("ERROR!!!")
-			println(err.Error())
 			d.handleError(err)
 		}
 	}

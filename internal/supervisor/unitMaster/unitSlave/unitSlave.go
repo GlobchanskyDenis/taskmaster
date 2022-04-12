@@ -11,13 +11,17 @@ import (
 )
 
 type Unit struct {
-	pid      int
-	name     string
-	binPath  string
-	procPath *string
-	sender   chan<- dto.Command
-	receiver <-chan dto.CommandResult
-	logger   dto.ILogger
+	pid        int
+	name       string
+	binPath    string
+	procPath   *string
+	sender     chan<- dto.Command
+	receiver   <-chan dto.CommandResult
+	logger     dto.ILogger
+
+	wasStarted bool
+	parentCtx  context.Context
+	conf       *dto.UnitConfig
 
 	statusCode     uint
 	status         string
@@ -28,46 +32,69 @@ type Unit struct {
 }
 
 func New(parentCtx context.Context, conf *dto.UnitConfig, logger dto.ILogger) *Unit {
-	newSender := make(chan dto.Command)
-	newReceiver := make(chan dto.CommandResult)
-	var slave = &Unit{
+	var slave =  &Unit{
 		name: conf.ProcessName,
 		binPath: conf.BinPath,
 		procPath: conf.Workingdir,
-		sender: newSender,
-		receiver: newReceiver,
+		parentCtx: parentCtx,
+		conf: conf,
 		logger: logger,
-		statusCode: constants.STATUS_ACTIVE,
-		status: "Процесс отправлен на запуск",
+		statusCode: constants.STATUS_NOT_STARTED,
+		status: "Процесс еще не запущен",
 		lastError: nil,
 	}
 
-	ctx, _ := context.WithCancel(parentCtx)
-	/*	Запускаю горутину процесса  */
-	go daemon.RunAsync(ctx, newSender, newReceiver, conf.GetProcessMeta(), logger)
+	if conf.Autostart == true {
+		slave.runIfNeeded()
+	}
 	return slave
 }
 
-func (slave *Unit) GetStatusAsync(wg *sync.WaitGroup, amountLogs uint) {
-	slave.sender <- dto.Command{
-		Type: constants.COMMAND_STATUS,
-		AmountLogs: amountLogs,
+/*	Запускает горутину для работы с демоном. Вынесено в отдельную функцию для реализации механизма отложенного запуска (если так указано в конфигурационнике)  */
+func (slave *Unit) runIfNeeded() {
+	/*	Стартую горутину только она не запущена. Получается что-то вроде синглтона  */
+	if slave.wasStarted == false {
+		newSender := make(chan dto.Command)
+		newReceiver := make(chan dto.CommandResult)
+		ctx, _ := context.WithCancel(slave.parentCtx)
+
+		slave.sender = newSender
+		slave.receiver = newReceiver
+
+		/*	Запускаю горутину процесса  */
+		go daemon.RunAsync(ctx, newSender, newReceiver, slave.conf.GetProcessMeta(), slave.logger)
+
+		slave.wasStarted = true
 	}
-	result := <- slave.receiver
-	slave.handleResponse(result)
+}
+
+func (slave *Unit) GetStatusAsync(wg *sync.WaitGroup, amountLogs uint) {
+	if slave.wasStarted == true {
+		slave.sender <- dto.Command{
+			Type: constants.COMMAND_STATUS,
+			AmountLogs: amountLogs,
+		}
+		result := <- slave.receiver
+		slave.handleResponse(result)
+	}
 	wg.Done()
 }
 
 func (slave *Unit) StopAsync(wg *sync.WaitGroup) {
-	slave.sender <- dto.Command{
-		Type: constants.COMMAND_STOP,
+	if slave.wasStarted == true {
+		slave.sender <- dto.Command{
+			Type: constants.COMMAND_STOP,
+		}
+		result := <- slave.receiver
+		slave.handleResponse(result)
 	}
-	result := <- slave.receiver
-	slave.handleResponse(result)
 	wg.Done()
 }
 
 func (slave *Unit) StartAsync(wg *sync.WaitGroup) {
+	/*	Запускаю демона если еще не запущен  */
+	slave.runIfNeeded()
+
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_START,
 	}
@@ -77,6 +104,9 @@ func (slave *Unit) StartAsync(wg *sync.WaitGroup) {
 }
 
 func (slave *Unit) RestartAsync(wg *sync.WaitGroup) {
+	/*	Запускаю демона если еще не запущен  */
+	slave.runIfNeeded()
+
 	slave.sender <- dto.Command{
 		Type: constants.COMMAND_RESTART,
 	}

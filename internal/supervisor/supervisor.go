@@ -8,6 +8,8 @@ import (
 	"sync"
 )
 
+var _ Supervisor = (*supervisor)(nil)
+
 type Supervisor interface {
 	StartByConfig(dto.UnitListConfig) error
 	StatusAll(dto.IPrinter)

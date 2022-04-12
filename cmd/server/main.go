@@ -141,7 +141,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	socketLoop(newSupervisor)
+	go socketLoop(newSupervisor)
 
 	/*	Механизм gracefull shutdown реализуется тут  */
 	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())
