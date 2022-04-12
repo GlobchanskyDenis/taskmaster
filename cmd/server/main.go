@@ -29,6 +29,15 @@ func (printer Printer) Printf(format string, args ...interface{}) {
 	}
 }
 
+func helpCommandOutput() string {
+	return `	status [-n value] unit_name	Статус юнита
+	status -all			Статус всех юнитов (сокращенный)
+	stop unit_name			Остановка юнита
+	start unit_name			Запуск юнита
+	restart unit_name		Перезапуск юнита
+	kill unit_name			Полное удаление юнита (до перезапуска)`
+}
+
 /*	Тут тестирую многофункциональное соединение с сокетом  */
 func socketLoop(svisor supervisor.Supervisor) {
 	conn := socket.New(SOCKET_CONN_PATH_LISTEN, SOCKET_CONN_PATH_WRITE)
@@ -112,6 +121,11 @@ func socketLoop(svisor supervisor.Supervisor) {
 					fmt.Printf("Error: %s\n", err)
 					return
 				}
+			}
+		case constants.COMMAND_HELP:
+			if err := conn.Write([]byte(constants.YELLOW + helpCommandOutput() + constants.NO_COLOR + "\n")); err != nil {
+				fmt.Printf("Error: %s\n", err)
+				return
 			}
 		default:
 			if err := conn.Write([]byte(constants.RED + "Unknown command" + constants.NO_COLOR + "\n")); err != nil {

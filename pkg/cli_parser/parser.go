@@ -48,6 +48,13 @@ func newParser(rawCliCommand string) *parser {
 	}
 }
 
+func (entity parser) isHelpCommand() bool {
+	if entity.cliCommand.CommandType == constants.COMMAND_HELP {
+		return true
+	}
+	return false
+}
+
 /*	Избавляемся от пробелов и табуляций  */
 func (entity *parser) split() {
 	splittedTabParts := strings.Split(entity.rawCliCommand, "	")
@@ -75,19 +82,22 @@ func (entity *parser) parseCommandName() error {
 	switch commandName {
 	case "status", "Status", "STATUS":
 		entity.cliCommand.CommandName = "status"
-		entity.cliCommand.CommandType = 100
+		entity.cliCommand.CommandType = constants.COMMAND_STATUS
 	case "stop", "Stop", "STOP":
 		entity.cliCommand.CommandName = "stop"
-		entity.cliCommand.CommandType = 101
+		entity.cliCommand.CommandType = constants.COMMAND_STOP
 	case "start", "Start", "START":
 		entity.cliCommand.CommandName = "start"
-		entity.cliCommand.CommandType = 102
+		entity.cliCommand.CommandType = constants.COMMAND_START
 	case "restart", "Restart", "RESTART":
 		entity.cliCommand.CommandName = "restart"
-		entity.cliCommand.CommandType = 103
+		entity.cliCommand.CommandType = constants.COMMAND_RESTART
 	case "kill", "Kill", "KILL":
 		entity.cliCommand.CommandName = "kill"
-		entity.cliCommand.CommandType = 104
+		entity.cliCommand.CommandType = constants.COMMAND_KILL
+	case "--help":
+		entity.cliCommand.CommandName = "help"
+		entity.cliCommand.CommandType = constants.COMMAND_HELP
 	default:
 		return errors.New("Неизвестная команда " + commandName)
 	}
@@ -98,6 +108,14 @@ func (entity *parser) parseCommandName() error {
 }
 
 func (entity *parser) parseUnitName() error {
+	if entity.isHelpCommand() == true {
+		if len(entity.rawCliCommandParts) != 0 {
+			return errors.New("После команды --help не должно быть никаких аргументов")
+		} else {
+			return nil
+		}
+	}
+
 	/*	Если команда уже найдена, а вот имени процесса не указано */
 	if len(entity.rawCliCommandParts) == 0 && entity.cliCommand.CommandType != 0 {
 		return errors.New("Не указано имя процесса")
@@ -140,17 +158,19 @@ func (entity *parser) parseArguments() error {
 	}
 
 	/*	У каждой комманды аргументы могут быть разными. У некоторых они вообще не предусмотрены  */
-	switch entity.cliCommand.CommandName {
-	case "status":
+	switch entity.cliCommand.CommandType {
+	case constants.COMMAND_STATUS:
 		return entity.parseStatusCommandArguments()
-	case "stop":
+	case constants.COMMAND_STOP:
 		return entity.parseStopCommandArguments()
-	case "start":
+	case constants.COMMAND_START:
 		return entity.parseStartCommandArguments()
-	case "restart":
+	case constants.COMMAND_RESTART:
 		return entity.parseRestartCommandArguments()
-	case "kill":
+	case constants.COMMAND_KILL:
 		return entity.parseKillCommandArguments()
+	case constants.COMMAND_HELP:
+		return entity.parseHelpCommandArguments()
 	}
 
 	return nil
@@ -221,4 +241,8 @@ func (entity *parser) parseRestartCommandArguments() error {
 
 func (entity *parser) parseKillCommandArguments() error {
 	return errors.New("У команды kill не предусмотрено аргумента " + entity.rawCliCommandParts[0])
+}
+
+func (entity *parser) parseHelpCommandArguments() error {
+	return errors.New("У команды help не предусмотрено аргумента " + entity.rawCliCommandParts[0])
 }
