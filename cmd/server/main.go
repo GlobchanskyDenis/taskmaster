@@ -107,8 +107,17 @@ func socketLoop(svisor supervisor.Supervisor) {
 				}
 			}
 		case constants.COMMAND_KILL:
+			if err := svisor.Kill(parsedCommand.UnitName, printer); err != nil {
+				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
+					fmt.Printf("Error: %s\n", err)
+					return
+				}
+			}
 		default:
-			println("unknown command")
+			if err := conn.Write([]byte(constants.RED + "Unknown command" + constants.NO_COLOR + "\n")); err != nil {
+				fmt.Printf("Error: %s\n", err)
+				return
+			}
 		}		
 	}
 }

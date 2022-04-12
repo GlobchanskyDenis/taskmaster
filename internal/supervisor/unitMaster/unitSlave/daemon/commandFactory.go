@@ -36,6 +36,7 @@ func (d *daemon) commandFactory(command dto.Command) {
 		if err := d.killProcess(); err != nil {
 			d.handleError(err)
 		}
+		d.sendStatusResult(0)
 	default:
 		message := fmt.Sprintf("Команда не найдена %d", int(constants.COMMAND_STATUS))
 		// d.logWarning(nil, message)

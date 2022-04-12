@@ -57,6 +57,14 @@ func (master *Unit) RestartAsync(wg *sync.WaitGroup) {
 	wg.Done()
 }
 
+func (master *Unit) KillAsync(wg *sync.WaitGroup) {
+	for _, slave := range master.replicas {
+		wg.Add(1)
+		go slave.KillAsync(wg)
+	}
+	wg.Done()
+}
+
 func (master *Unit) PrintShortStatus(printer dto.IPrinter) {
 	if len(master.replicas) > 1 {
 		var sign string

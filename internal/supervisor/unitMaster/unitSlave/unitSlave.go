@@ -115,6 +115,17 @@ func (slave *Unit) RestartAsync(wg *sync.WaitGroup) {
 	wg.Done()
 }
 
+func (slave *Unit) KillAsync(wg *sync.WaitGroup) {
+	if slave.wasStarted == true {
+		slave.sender <- dto.Command{
+			Type: constants.COMMAND_KILL,
+		}
+		result := <- slave.receiver
+		slave.handleResponse(result)
+	}
+	wg.Done()
+}
+
 func (slave *Unit) PrintShortStatus(printer dto.IPrinter) {
 	if slave.statusCode == constants.STATUS_ACTIVE {
 		printer.Printf("%s[+] %5d %s%s\n", constants.GREEN, slave.pid, slave.name, constants.NO_COLOR)

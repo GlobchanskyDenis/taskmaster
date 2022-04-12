@@ -17,6 +17,7 @@ type Supervisor interface {
 	Stop(string, dto.IPrinter) error
 	Start(string, dto.IPrinter) error
 	Restart(string, dto.IPrinter) error
+	Kill(string, dto.IPrinter) error
 }
 
 type supervisor struct {
@@ -131,6 +132,23 @@ func (s *supervisor) Restart(processName string, printer dto.IPrinter) error {
 	return nil
 }
 
+func (s *supervisor) Kill(processName string, printer dto.IPrinter) error {
+	s.logInfo("Получена команда kill процесса " + processName)
+	master, err := s.findMasterByProcessName(processName)
+	if err != nil {
+		s.logWarning(err, "")
+		return err
+	}
+
+	s.wg.Add(1)
+	go master.KillAsync(s.wg)
+	s.wg.Wait()
+	if err := s.removeMesterByProcessName(processName); err != nil {
+		return err
+	}
+	return nil
+}
+
 // TODO -- в конфигурационнике после парсинга перепроверять чтобы не было одинаковых процессов
 func (s *supervisor) findMasterByProcessName(processName string) (*unitMaster.Unit, error) {
 	for _, master := range s.unitList {
@@ -139,6 +157,16 @@ func (s *supervisor) findMasterByProcessName(processName string) (*unitMaster.Un
 		}
 	}
 	return nil, errors.New("Процесс " + processName + " не найден")
+}
+
+func (s *supervisor) removeMesterByProcessName(processName string) error {
+	for i, master := range s.unitList {
+		if master.GetName() == processName {
+			s.unitList = append(s.unitList[:i], s.unitList[i + 1:]...)
+			return nil
+		}
+	}
+	return errors.New("Процесс " + processName + " не найден")
 }
 
 func (s *supervisor) logInfo(message string) {
