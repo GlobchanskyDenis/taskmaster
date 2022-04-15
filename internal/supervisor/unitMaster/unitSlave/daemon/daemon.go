@@ -4,6 +4,7 @@ import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/utils/process"
+	"github.com/GlobchanskyDenis/taskmaster.git/pkg/utils/file_writer"
 	"bufio"
 	"context"
 	"time"
@@ -34,6 +35,8 @@ type processAsync struct {
 	startTime      time.Time
 	stdout         io.ReadCloser
 	stderr         io.ReadCloser
+	outWriter      io.WriteCloser
+	errWriter      io.WriteCloser
 	logs           []string
 
 	restartedTimes uint
@@ -59,6 +62,10 @@ func new(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.Com
 
 func RunAsync(ctx context.Context, receiver <-chan dto.Command, sender chan<- dto.CommandResult, meta dto.ProcessMeta, logger dto.ILogger) {
 	d := new(ctx, receiver, sender, meta, logger)
+	if meta.OutputRedirect != nil {
+		d.outWriter = file_writer.New(*meta.OutputRedirect + ".out")
+		d.errWriter = file_writer.New(*meta.OutputRedirect + ".err")
+	}
 	if meta.Autostart == true {
 		if err := d.newProcess(); err != nil {
 			d.handleError(err)
@@ -198,15 +205,21 @@ func (d *daemon) listenStdout() {
 	scanner := bufio.NewScanner(d.stdout)
 	/*	Выход из цикла только при получении EOF (которое получаем при завершении процесса)  */
 	for scanner.Scan() {
+		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
+		**	сохранение логов в самой горутине для команды status)  */
+		newLogLine := scanner.Bytes()
 		/*	Если в конфигруационнике мы не выбрали пункт "отключить вывод"  */
 		if d.OutputDiscard == false {
-			/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
-			**	сохранение логов в самой горутине для команды status)  */
-			newLogLine := scanner.Bytes()
 			/*	Добавляю лог в слайс для быстрой отдачи при команде status */
 			d.addLog(string(newLogLine))
 			/*	Логгирую в файл  */
 			d.logInfo(string(newLogLine))
+		}
+		if d.outWriter != nil {
+			d.mu.Lock()
+			_, _ = d.outWriter.Write(newLogLine)
+			_, _ = d.outWriter.Write([]byte("/n"))
+			d.mu.Unlock()
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -218,15 +231,21 @@ func (d *daemon) listenStderr() {
 	scanner := bufio.NewScanner(d.stderr)
 	/*	Выход из цикла только при получении EOF (которое получаем при завершении процесса)  */
 	for scanner.Scan() {
+		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
+		**	сохранение логов в самой горутине для команды status)  */
+		newLogLine := scanner.Bytes()
 		/*	Если в конфигруационнике мы не выбрали пункт "отключить вывод"  */
 		if d.OutputDiscard == false {
-			/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
-			**	сохранение логов в самой горутине для команды status)  */
-			newLogLine := scanner.Bytes()
 			/*	Добавляю лог в слайс для быстрой отдачи при команде status */
 			d.addLog(string(newLogLine))
 			/*	Логгирую в файл  */
 			d.logWarning(nil, string(newLogLine))
+		}
+		if d.errWriter != nil {
+			d.mu.Lock()
+			_, _ = d.errWriter.Write(newLogLine)
+			_, _ = d.errWriter.Write([]byte("\n"))
+			d.mu.Unlock()
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -344,4 +363,15 @@ func (d *daemon) isNotStarted() bool {
 		return true
 	}
 	return false
+}
+
+func (d *daemon) closeWithMu() {
+	d.mu.Lock()
+	if d.errWriter != nil {
+		_ = d.errWriter.Close()
+	}
+	if d.outWriter != nil {
+		_ = d.outWriter.Close()
+	}	
+	d.mu.Unlock()
 }

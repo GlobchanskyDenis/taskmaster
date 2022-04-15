@@ -147,6 +147,8 @@ func (u UnitConfig) copy() UnitConfig {
 		Exitcodes: u.Exitcodes,
 		Umask: u.Umask,
 		Workingdir: u.Workingdir,
+		OutputDiscard: u.OutputDiscard,
+		OutputRedirect: u.OutputRedirect,
 		ProcessName: u.ProcessName,
 		ProcessArgs: u.ProcessArgs,
 		BinPath: u.BinPath,
@@ -172,5 +174,6 @@ func (u UnitConfig) GetProcessMeta() ProcessMeta {
 		Stoptime: u.Stoptime,
 		Umask: u.Umask,
 		OutputDiscard: u.OutputDiscard,
+		OutputRedirect: u.OutputRedirect,
 	}
 }

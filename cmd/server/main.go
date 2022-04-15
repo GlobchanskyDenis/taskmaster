@@ -128,10 +128,11 @@ func socketLoop(svisor supervisor.Supervisor) {
 				return
 			}
 		default:
-			if err := conn.Write([]byte(constants.RED + "Unknown command" + constants.NO_COLOR + "\n")); err != nil {
-				fmt.Printf("Error: %s\n", err)
-				return
-			}
+			continue
+			// if err := conn.Write([]byte(constants.RED + "Unknown command" + constants.NO_COLOR + "\n")); err != nil {
+			// 	fmt.Printf("Error: %s\n", err)
+			// 	return
+			// }
 		}		
 	}
 }

@@ -20,7 +20,7 @@
 			"Umask": 22,
 			"Workingdir": null,
 			"OutputDiscard": true,
-			"OutputRedirect": null
+			"OutputRedirect": "/home/skinny/Documents/go/src/taskmaster/process_logs"
 		}
 	]
 }

@@ -66,6 +66,7 @@ func (d *daemon) killProcess() error {
 		d.lastChangeTime = time.Now()
 		d.mu.Unlock()
 	}
+	d.closeWithMu()
 	return nil
 }
 
