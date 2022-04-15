@@ -22,7 +22,9 @@ type UnitConfig struct {
 	Signal          string   `conf:"Signal"`         // Каким сигналом останавливать процесс. Это поле нужно парсить. Есть три варианта сигнала останова SIGTERM, SIGINT, SIGQUIT
 	Exitcodes       []int    `conf:"Exitcodes"`      // Список кодов завершения программы, после которых можно делать рестарт программы
 	Umask           int      `conf:"Umask"`          // Маска прав доступа 0 - нет доп ограничений 7 - запретить все права
-	Workingdir      *string	 `conf:"Workingdir"`     // установка каталога для процесса (относится к chroot)
+	Workingdir      *string	 `conf:"Workingdir"`     // установка каталога для процесса (относится к chroot). Поправка - не относится к chroot
+	OutputDiscard   bool     `conf:"OutputDiscard"`  // Отключение вывода в файл
+	OutputRedirect  *string  `conf:"OutputRedirect"` // Перенаправление вывода в файл (имя файла для перенаправления)
 
 	ProcessName     string         `conf:"-"`
 	ProcessArgs     []string       `conf:"-"`
@@ -169,5 +171,6 @@ func (u UnitConfig) GetProcessMeta() ProcessMeta {
 		Starttime: u.Starttime,
 		Stoptime: u.Stoptime,
 		Umask: u.Umask,
+		OutputDiscard: u.OutputDiscard,
 	}
 }

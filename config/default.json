@@ -20,7 +20,9 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [],
 			"Umask": 22,
-			"Workingdir": "./test/"
+			"Workingdir": "./test/",
+			"OutputDiscard": false,
+			"OutputRedirect": null
 		},{
 			"Cmd": "sleep 8000",
 			"Args": [],
@@ -34,7 +36,9 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [],
 			"Umask": 22,
-			"Workingdir": "./test/"
+			"Workingdir": "./test/",
+			"OutputDiscard": false,
+			"OutputRedirect": null
 		}
 	]
 }

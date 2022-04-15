@@ -18,7 +18,9 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [],
 			"Umask": 22,
-			"Workingdir": null
+			"Workingdir": null,
+			"OutputDiscard": true,
+			"OutputRedirect": null
 		}
 	]
 }

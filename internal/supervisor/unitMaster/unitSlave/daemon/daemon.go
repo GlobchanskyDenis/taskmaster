@@ -198,13 +198,16 @@ func (d *daemon) listenStdout() {
 	scanner := bufio.NewScanner(d.stdout)
 	/*	Выход из цикла только при получении EOF (которое получаем при завершении процесса)  */
 	for scanner.Scan() {
-		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
-		**	сохранение логов в самой горутине для команды status)  */
-		newLogLine := scanner.Bytes()
-		/*	Добавляю лог в слайс для быстрой отдачи при команде status */
-		d.addLog(string(newLogLine))
-		/*	Логгирую в файл  */
-		d.logInfo(string(newLogLine))
+		/*	Если в конфигруационнике мы не выбрали пункт "отключить вывод"  */
+		if d.OutputDiscard == false {
+			/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
+			**	сохранение логов в самой горутине для команды status)  */
+			newLogLine := scanner.Bytes()
+			/*	Добавляю лог в слайс для быстрой отдачи при команде status */
+			d.addLog(string(newLogLine))
+			/*	Логгирую в файл  */
+			d.logInfo(string(newLogLine))
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		d.handleError(err)
@@ -215,13 +218,16 @@ func (d *daemon) listenStderr() {
 	scanner := bufio.NewScanner(d.stderr)
 	/*	Выход из цикла только при получении EOF (которое получаем при завершении процесса)  */
 	for scanner.Scan() {
-		/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
-		**	сохранение логов в самой горутине для команды status)  */
-		newLogLine := scanner.Bytes()
-		/*	Добавляю лог в слайс для быстрой отдачи при команде status */
-		d.addLog(string(newLogLine))
-		/*	Логгирую в файл  */
-		d.logWarning(nil, string(newLogLine))
+		/*	Если в конфигруационнике мы не выбрали пункт "отключить вывод"  */
+		if d.OutputDiscard == false {
+			/*	Тут мы делаем все что нужно для обработки потока вывода процесса (в данной реализации это логгирование в файл и
+			**	сохранение логов в самой горутине для команды status)  */
+			newLogLine := scanner.Bytes()
+			/*	Добавляю лог в слайс для быстрой отдачи при команде status */
+			d.addLog(string(newLogLine))
+			/*	Логгирую в файл  */
+			d.logWarning(nil, string(newLogLine))
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		d.handleError(err)

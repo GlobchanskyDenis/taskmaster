@@ -22,7 +22,9 @@
 			"Signal": "SIGQUIT",
 			"Exitcodes": [1, 100],
 			"Umask": 16,
-			"Workingdir": "./test/"
+			"Workingdir": "./test/",
+			"OutputDiscard": false,
+			"OutputRedirect": null
 		}
 	]
 }
