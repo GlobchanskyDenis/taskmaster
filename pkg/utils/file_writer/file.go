@@ -6,14 +6,7 @@ import (
 )
 
 func New(pathfile string) io.WriteCloser {
-	// file, err := os.Open(pathfile)
-	// if err == nil && file != nil {
-	// 	return file
-	// }
-
-	_ = os.Remove(pathfile)
-
-	file, err := os.Create(pathfile)
+	file, err := os.OpenFile(pathfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err == nil && file != nil {
 		return file
 	}
