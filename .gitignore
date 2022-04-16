@@ -1,5 +1,7 @@
 client_bin
 server_bin
+*logs.out
+*logs.err
 unit_bin
 sample_simple_bin
 sample_autorestart_bin
