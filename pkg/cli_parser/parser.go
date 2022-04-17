@@ -55,6 +55,20 @@ func (entity parser) isHelpCommand() bool {
 	return false
 }
 
+func (entity parser) isExitCommand() bool {
+	if entity.cliCommand.CommandType == constants.COMMAND_EXIT {
+		return true
+	}
+	return false
+}
+
+func (entity parser) isReconfigCommand() bool {
+	if entity.cliCommand.CommandType == constants.COMMAND_RECONFIG {
+		return true
+	}
+	return false
+}
+
 /*	Избавляемся от пробелов и табуляций  */
 func (entity *parser) split() {
 	splittedTabParts := strings.Split(entity.rawCliCommand, "	")
@@ -98,6 +112,12 @@ func (entity *parser) parseCommandName() error {
 	case "--help":
 		entity.cliCommand.CommandName = "help"
 		entity.cliCommand.CommandType = constants.COMMAND_HELP
+	case "exit", "Exit", "EXIT":
+		entity.cliCommand.CommandName = "exit"
+		entity.cliCommand.CommandType = constants.COMMAND_EXIT
+	case "reconfig", "Reconfig", "RECONFIG":
+		entity.cliCommand.CommandName = "reconfig"
+		entity.cliCommand.CommandType = constants.COMMAND_RECONFIG
 	default:
 		return errors.New("Неизвестная команда " + commandName)
 	}
@@ -111,6 +131,22 @@ func (entity *parser) parseUnitName() error {
 	if entity.isHelpCommand() == true {
 		if len(entity.rawCliCommandParts) != 0 {
 			return errors.New("После команды --help не должно быть никаких аргументов")
+		} else {
+			return nil
+		}
+	}
+
+	if entity.isExitCommand() == true {
+		if len(entity.rawCliCommandParts) != 0 {
+			return errors.New("После команды exit не должно быть никаких аргументов")
+		} else {
+			return nil
+		}
+	}
+
+	if entity.isReconfigCommand() == true {
+		if len(entity.rawCliCommandParts) != 0 {
+			return errors.New("После команды reconfig не должно быть никаких аргументов")
 		} else {
 			return nil
 		}
@@ -161,16 +197,18 @@ func (entity *parser) parseArguments() error {
 	switch entity.cliCommand.CommandType {
 	case constants.COMMAND_STATUS:
 		return entity.parseStatusCommandArguments()
-	case constants.COMMAND_STOP:
-		return entity.parseStopCommandArguments()
-	case constants.COMMAND_START:
-		return entity.parseStartCommandArguments()
-	case constants.COMMAND_RESTART:
-		return entity.parseRestartCommandArguments()
-	case constants.COMMAND_KILL:
-		return entity.parseKillCommandArguments()
-	case constants.COMMAND_HELP:
-		return entity.parseHelpCommandArguments()
+	// case constants.COMMAND_STOP:
+	// 	return entity.parseStopCommandArguments()
+	// case constants.COMMAND_START:
+	// 	return entity.parseStartCommandArguments()
+	// case constants.COMMAND_RESTART:
+	// 	return entity.parseRestartCommandArguments()
+	// case constants.COMMAND_KILL:
+	// 	return entity.parseKillCommandArguments()
+	// case constants.COMMAND_HELP:
+	// 	return entity.parseHelpCommandArguments()
+	default:
+		return entity.forbiddenArgument()
 	}
 
 	return nil
@@ -227,22 +265,26 @@ func (entity *parser) parseStatusNCommandArgument() error {
 	return nil
 }
 
-func (entity *parser) parseStopCommandArguments() error {
-	return errors.New("У команды stop не предусмотрено аргумента " + entity.rawCliCommandParts[0])
+func (entity *parser) forbiddenArgument() error {
+	return errors.New("У команды " + entity.cliCommand.CommandName + " не предусмотрено аргумента " + entity.rawCliCommandParts[0])
 }
 
-func (entity *parser) parseStartCommandArguments() error {
-	return errors.New("У команды start не предусмотрено аргумента " + entity.rawCliCommandParts[0])
-}
+// func (entity *parser) parseStopCommandArguments() error {
+// 	return errors.New("У команды stop не предусмотрено аргумента " + entity.rawCliCommandParts[0])
+// }
 
-func (entity *parser) parseRestartCommandArguments() error {
-	return errors.New("У команды restart не предусмотрено аргумента " + entity.rawCliCommandParts[0])
-}
+// func (entity *parser) parseStartCommandArguments() error {
+// 	return errors.New("У команды start не предусмотрено аргумента " + entity.rawCliCommandParts[0])
+// }
 
-func (entity *parser) parseKillCommandArguments() error {
-	return errors.New("У команды kill не предусмотрено аргумента " + entity.rawCliCommandParts[0])
-}
+// func (entity *parser) parseRestartCommandArguments() error {
+// 	return errors.New("У команды restart не предусмотрено аргумента " + entity.rawCliCommandParts[0])
+// }
 
-func (entity *parser) parseHelpCommandArguments() error {
-	return errors.New("У команды help не предусмотрено аргумента " + entity.rawCliCommandParts[0])
-}
+// func (entity *parser) parseKillCommandArguments() error {
+// 	return errors.New("У команды kill не предусмотрено аргумента " + entity.rawCliCommandParts[0])
+// }
+
+// func (entity *parser) parseHelpCommandArguments() error {
+// 	return errors.New("У команды help не предусмотрено аргумента " + entity.rawCliCommandParts[0])
+// }

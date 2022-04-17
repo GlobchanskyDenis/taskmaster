@@ -2,6 +2,7 @@ package supervisor
 
 import (
 	"github.com/GlobchanskyDenis/taskmaster.git/internal/supervisor/unitMaster"
+	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
 	"context"
 	"errors"
@@ -12,6 +13,7 @@ var _ Supervisor = (*supervisor)(nil)
 
 type Supervisor interface {
 	StartByConfig(dto.UnitListConfig) error
+	UpdateByConfig(dto.UnitListConfig) error
 	StatusAll(dto.IPrinter)
 	Status(string, dto.IPrinter, uint) error
 	Stop(string, dto.IPrinter) error
@@ -61,8 +63,47 @@ func (s *supervisor) StartByConfig(confList dto.UnitListConfig) error {
 	return nil
 }
 
+func (s *supervisor) UpdateByConfig(confList dto.UnitListConfig) error {
+	/*	Валидируем и парсим все конфиги  */
+	for _, conf := range confList {
+		if err := conf.Validate(); err != nil {
+			return err
+		}
+		if err := conf.Parse(); err != nil {
+			return err
+		}
+	}
+
+	for _, master :=  range s.unitList {
+		s.wg.Add(1)
+		go master.KillAsync(s.wg)
+	}
+	s.wg.Wait()
+	s.unitList = nil
+
+	/*	Запускаем процессы  */
+	for _, conf := range confList {
+		master := unitMaster.New(s.ctx, conf, s.logger)
+		s.unitList = append(s.unitList, master)
+	}
+
+	/*	Получаем статусы процессов чтобы сразу знать их pid  */
+	for _, master := range s.unitList {
+		s.wg.Add(1)
+		go master.GetStatusAsync(s.wg, 0)
+	}
+	s.wg.Wait()
+	return nil
+}
+
 func (s *supervisor) StatusAll(printer dto.IPrinter) {
 	s.logInfo("Получена команда status-all")
+
+	if len(s.unitList) == 0 {
+		printer.Printf("%sНет запущеных процессов%s\n", constants.GREEN, constants.NO_COLOR)
+		return
+	}
+
 	for _, master := range s.unitList {
 		s.wg.Add(1)
 		go master.GetStatusAsync(s.wg, 0)

@@ -4,8 +4,6 @@
 		"LogFolder": "./logs/",
 		"Permissions": "777"
 	},
-	"Socket": {
-	},
 	"Units": [
 		{
 			"Cmd": "vim",

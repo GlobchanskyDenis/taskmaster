@@ -4,7 +4,6 @@ import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/socket"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/cli_parser"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
-	// "github.com/GlobchanskyDenis/taskmaster.git/pkg/dto"
 	"github.com/GlobchanskyDenis/taskmaster.git/internal/supervisor"
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/utils/file_logger"
 	"context"
@@ -39,18 +38,18 @@ func helpCommandOutput() string {
 }
 
 /*	Тут тестирую многофункциональное соединение с сокетом  */
-func socketLoop(svisor supervisor.Supervisor) {
+func socketLoop(svisor supervisor.Supervisor, exit chan os.Signal) {
 	conn := socket.New(SOCKET_CONN_PATH_LISTEN, SOCKET_CONN_PATH_WRITE)
 
 	if err := conn.ReaderStartSync(); err != nil {
 		fmt.Printf("Error: %s\n", err)
-		os.Exit(1)
+		exit <- syscall.SIGQUIT
 	}
 
 	defer func(conn socket.Conn) {
 		if err := conn.Close(); err != nil {
 			fmt.Printf("Error: %s\n", err)
-			return
+			exit <- syscall.SIGQUIT
 		}
 	}(conn)
 
@@ -60,14 +59,14 @@ func socketLoop(svisor supervisor.Supervisor) {
 		request, err := conn.Read()
 		if err != nil {
 			fmt.Printf("Error: %s\n", err)
-			return
+			exit <- syscall.SIGQUIT
 		}
 
 		parsedCommand, err := cli_parser.ParseCliCommand(string(request))
 		if err != nil {
 			if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 				fmt.Printf("Error: %s\n", err)
-				return
+				exit <- syscall.SIGQUIT
 			}
 			continue
 		}
@@ -78,7 +77,7 @@ func socketLoop(svisor supervisor.Supervisor) {
 				if err := svisor.Status(parsedCommand.UnitName, printer, 10); err != nil {
 					if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 						fmt.Printf("Error: %s\n", err)
-						return
+						exit <- syscall.SIGQUIT
 					}
 				}
 			} else {
@@ -89,7 +88,7 @@ func socketLoop(svisor supervisor.Supervisor) {
 					if err := svisor.Status(parsedCommand.UnitName, printer, parsedCommand.Args[0].Value); err != nil {
 						if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 							fmt.Printf("Error: %s\n", err)
-							return
+							exit <- syscall.SIGQUIT
 						}
 					}
 				}
@@ -98,41 +97,54 @@ func socketLoop(svisor supervisor.Supervisor) {
 			if err := svisor.Stop(parsedCommand.UnitName, printer); err != nil {
 				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 					fmt.Printf("Error: %s\n", err)
-					return
+					exit <- syscall.SIGQUIT
 				}
 			}
 		case constants.COMMAND_START:
 			if err := svisor.Start(parsedCommand.UnitName, printer); err != nil {
 				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 					fmt.Printf("Error: %s\n", err)
-					return
+					exit <- syscall.SIGQUIT
 				}
 			}
 		case constants.COMMAND_RESTART:
 			if err := svisor.Restart(parsedCommand.UnitName, printer); err != nil {
 				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 					fmt.Printf("Error: %s\n", err)
-					return
+					exit <- syscall.SIGQUIT
 				}
 			}
 		case constants.COMMAND_KILL:
 			if err := svisor.Kill(parsedCommand.UnitName, printer); err != nil {
 				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
 					fmt.Printf("Error: %s\n", err)
-					return
+					exit <- syscall.SIGQUIT
 				}
 			}
 		case constants.COMMAND_HELP:
 			if err := conn.Write([]byte(constants.YELLOW + helpCommandOutput() + constants.NO_COLOR + "\n")); err != nil {
 				fmt.Printf("Error: %s\n", err)
-				return
+				exit <- syscall.SIGQUIT
+			}
+		case constants.COMMAND_EXIT:
+			println("Получил от клиента сигнал остановки программы")
+			exit <- syscall.SIGQUIT
+		case constants.COMMAND_RECONFIG:
+			if unitListConfig, err := initializeConfigs(configPath); err != nil {
+				if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
+					fmt.Printf("Error: %s\n", err)
+					exit <- syscall.SIGQUIT
+				}
+			} else {
+				if err := svisor.UpdateByConfig(unitListConfig); err != nil {
+					if err := conn.Write([]byte(constants.RED + err.Error() + constants.NO_COLOR + "\n")); err != nil {
+						fmt.Printf("Error: %s\n", err)
+						exit <- syscall.SIGQUIT
+					}
+				}
 			}
 		default:
 			continue
-			// if err := conn.Write([]byte(constants.RED + "Unknown command" + constants.NO_COLOR + "\n")); err != nil {
-			// 	fmt.Printf("Error: %s\n", err)
-			// 	return
-			// }
 		}		
 	}
 }
@@ -165,21 +177,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	go socketLoop(newSupervisor)
+	exit := make(chan os.Signal, 1)
+
+	go socketLoop(newSupervisor, exit)
 
 	/*	Механизм gracefull shutdown реализуется тут  */
-	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime())
+	waitForGracefullShutdown(cancel, unitListConfig.GetMaxStopTime(), exit)
 }
 
-func waitForGracefullShutdown(cancel context.CancelFunc, waitTime uint) {
+func waitForGracefullShutdown(cancel context.CancelFunc, waitTime uint, exit chan os.Signal) {
 	/*	Отлавливаю системный вызов останова программы. Это блокирующая операция  */
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit,
+	signal.Notify(exit,
 		syscall.SIGTERM, /*  Согласно всякой документации именно он должен останавливать прогу, но на деле его мы не находим. Оставил его просто на всякий случай  */
 		syscall.SIGINT,  /*  Останавливает прогу когда она запущена из терминала и останавливается через CTRL+C  */
 		syscall.SIGQUIT, /*  Останавливает демона systemd  */
 	)
-	<-quit
+	<-exit
 
 	/*	Посылаю каждому воркеру сигнал останова  */
 	cancel()

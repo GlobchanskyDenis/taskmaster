@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/GlobchanskyDenis/taskmaster.git/pkg/socket"
+	"github.com/GlobchanskyDenis/taskmaster.git/pkg/cli_parser"
+	"github.com/GlobchanskyDenis/taskmaster.git/pkg/constants"
 	"fmt"
 	"os"
 	"context"
@@ -44,6 +46,11 @@ func connectionAsync() {
 		if err := conn.Write([]byte(line)); err != nil {
 			fmt.Printf("Error: %s\n", err)
 			os.Exit(1)
+		}
+		
+		parsedCommand, err := cli_parser.ParseCliCommand(line)
+		if err == nil && parsedCommand.CommandType == constants.COMMAND_EXIT {
+			os.Exit(0)
 		}
 	}
 }

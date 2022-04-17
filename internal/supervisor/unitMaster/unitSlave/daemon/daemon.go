@@ -307,7 +307,7 @@ func (d *daemon) handleProcessInterrupt() {
 		if err != nil {
 			d.handleError(err)
 		} else {
-			fmt.Printf("\tPid %d \tExited? %#v \tExitCode %d \tString %s\n", exitState.Pid(), exitState.Exited(), exitState.ExitCode(), exitState.String())
+			// fmt.Printf("\tPid %d \tExited? %#v \tExitCode %d \tString %s\n", exitState.Pid(), exitState.Exited(), exitState.ExitCode(), exitState.String())
 			/*	Проверяем логику из конфигурационника -- отработал ли процесс минимально положенное время  */
 			if uint(time.Now().Sub(d.startTime).Seconds()) < d.Starttime {
 				d.handleError(errors.New("Процесс завершился раньше ожидаемого времени"))
